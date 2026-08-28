@@ -365,3 +365,4 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <PasswordResetOverlay />
   </React.StrictMode>
 );
+export default App;
