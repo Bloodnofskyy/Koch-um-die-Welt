@@ -1,0 +1,70 @@
+KOCH DICH UM DIE WELT – ONLINE STELLEN
+======================================
+
+Die App ist für Vite + React + Supabase + Vercel vorbereitet.
+
+1) SUPABASE ANLEGEN
+-------------------
+- Auf https://supabase.com einloggen und ein neues Projekt erstellen.
+- Im Projekt links "SQL Editor" öffnen.
+- Neue Query anlegen.
+- Den kompletten Inhalt der Datei "supabase-weltkochen.sql" einfügen.
+- "Run" drücken.
+
+2) SUPABASE ZUGANGSDATEN HOLEN
+------------------------------
+- In Supabase: Project Settings / API bzw. Connect öffnen.
+- Project URL kopieren.
+- Publishable/Anon Key kopieren.
+
+3) LOKAL EINTRAGEN
+------------------
+- Datei ".env.example" kopieren und die Kopie ".env.local" nennen.
+- Dort eintragen:
+
+VITE_SUPABASE_URL=https://DEIN-PROJEKT.supabase.co
+VITE_SUPABASE_ANON_KEY=DEIN_KEY
+
+4) LOKAL TESTEN
+---------------
+Im Projektordner ein Terminal öffnen:
+
+npm install
+npm run dev
+
+Dann die im Terminal angezeigte lokale Adresse im Browser öffnen.
+
+5) GITHUB
+---------
+Den kompletten Inhalt dieses Ordners in dein GitHub-Repository
+"Koch-um-die-Welt" hochladen.
+WICHTIG: .env.local NICHT hochladen. Sie ist bereits über .gitignore ausgeschlossen.
+
+6) VERCEL
+---------
+- https://vercel.com öffnen.
+- Mit GitHub anmelden.
+- "Add New" -> "Project".
+- Repository "Koch-um-die-Welt" importieren.
+- Framework sollte automatisch als Vite erkannt werden.
+- Unter Environment Variables eintragen:
+  VITE_SUPABASE_URL = deine Project URL
+  VITE_SUPABASE_ANON_KEY = dein Publishable/Anon Key
+- Deploy drücken.
+
+Danach bekommst du eine öffentliche Adresse wie:
+https://koch-um-die-welt.vercel.app
+
+STANDARD-ADMIN
+--------------
+Benutzer: admin
+Passwort:  admin123
+
+Nach dem ersten Login bitte ändern.
+
+WICHTIG ZUR SICHERHEIT
+----------------------
+Diese Version ist bewusst einfach für einen kleinen privaten Freundeskreis gebaut.
+Benutzer/Passwörter werden noch im gemeinsamen App-Datensatz gespeichert und die
+SQL-Datei deaktiviert RLS. Für eine offen beworbene öffentliche Website sollte als
+nächster Schritt Supabase Auth + Row Level Security eingerichtet werden.
