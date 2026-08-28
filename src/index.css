@@ -2,7 +2,268 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { min-height: 100%; }
-body { margin: 0; background: #f5ead7; color: #292524; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-* { box-sizing: border-box; }
-button, input, textarea, select { font: inherit; }
+html, body, #root {
+  min-height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f5ead7;
+  color: #292524;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    overflow-x: hidden;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+
+  /* Eingaben auf dem Smartphone größer und ohne iPhone-Autozoom */
+  input,
+  textarea,
+  select {
+    min-height: 48px;
+    font-size: 16px !important;
+  }
+
+  textarea {
+    min-height: 130px;
+  }
+
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Kopfbereich kompakter */
+  header {
+    padding: 10px 12px !important;
+  }
+
+  header > div {
+    gap: 10px !important;
+  }
+
+  header h1 {
+    font-size: 1.15rem !important;
+    line-height: 1.2 !important;
+  }
+
+  header p {
+    display: none;
+  }
+
+  header .h-16.w-16 {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  header .h-16.w-16 svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Benutzer + Abmelden oben sauber nebeneinander */
+  header > div > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  header > div > div:last-child > div {
+    display: block !important;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  header > div > div:last-child button {
+    min-height: 40px;
+    padding: 8px 14px !important;
+  }
+
+  /* Mobile Bottom-Navigation */
+  header nav {
+    position: fixed;
+    z-index: 50;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px !important;
+    padding: 7px;
+    border: 1px solid #d6d3d1;
+    border-radius: 22px;
+    background: rgba(255, 248, 233, 0.97);
+    box-shadow: 0 10px 30px rgba(41, 37, 36, 0.18);
+    backdrop-filter: blur(14px);
+  }
+
+  header nav button,
+  header nav span {
+    min-width: 0;
+    min-height: 54px;
+    padding: 5px 3px !important;
+    border-bottom: 0 !important;
+    border-radius: 15px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px !important;
+    font-size: 10px !important;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  header nav button[class*="border-stone-900"] {
+    background: #292524;
+    color: white;
+  }
+
+  header nav svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Seitenränder und Abstände */
+  main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 16px !important;
+    padding-bottom: 18px !important;
+  }
+
+  /* Weltkarte auf Handydisplay sinnvoll groß */
+  .h-\[760px\] {
+    height: 410px !important;
+  }
+
+  .absolute.left-8.top-8 {
+    left: 10px !important;
+    top: 10px !important;
+    max-width: calc(100% - 20px);
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .absolute.left-8.top-8 h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .absolute.left-8.top-8 p {
+    margin-top: 4px !important;
+    font-size: 11px !important;
+  }
+
+  .absolute.bottom-6.left-6 {
+    left: 10px !important;
+    bottom: 10px !important;
+    padding: 6px !important;
+  }
+
+  .absolute.bottom-6.left-6 button {
+    min-width: 44px;
+    min-height: 40px;
+    padding: 5px 10px !important;
+  }
+
+  /* Große runde Karten etwas kompakter */
+  .rounded-\[2rem\] {
+    border-radius: 22px !important;
+  }
+
+  /* Rezeptlisten: horizontales Abschneiden verhindern */
+  [class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"] {
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+  }
+
+  [class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"] > span:last-of-type {
+    margin-top: 2px;
+  }
+
+  [class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"] > svg {
+    display: none;
+  }
+
+  /* Tabellenkopf der Rezeptliste auf Mobile ausblenden */
+  div[class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"][class*="font-black"] {
+    display: none !important;
+  }
+
+  /* Bilder in Rezeptlisten nicht zu breit */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Modal als mobiles Bottom-Sheet */
+  .fixed.inset-0 {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .fixed.inset-0 > div {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 92dvh !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    padding: 18px 14px calc(18px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .fixed.inset-0 h2 {
+    font-size: 1.7rem !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Admin */
+  .max-w-4xl {
+    max-width: 100% !important;
+  }
+
+  /* Login/Registrierung */
+  .min-h-screen.px-5.py-10 {
+    padding: 18px 12px !important;
+  }
+
+  .min-h-screen.px-5.py-10 h1 {
+    font-size: 2.2rem !important;
+    line-height: 1 !important;
+  }
+
+  /* Buttons mit Text dürfen auf kleinen Displays umbrechen */
+  button {
+    white-space: normal;
+  }
+}
