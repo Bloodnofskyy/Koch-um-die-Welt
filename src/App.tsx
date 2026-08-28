@@ -161,6 +161,7 @@ const starterSuggestions = {
   Österreich: ["Kaiserschmarrn"],
   Schweiz: ["Rösti"],
 };
+
 const defaultSettings = {
   requiredRecipesPerCountry: DEFAULT_REQUIRED_RECIPES_PER_COUNTRY,
   minAverageRatingForCompletion: DEFAULT_MIN_AVERAGE_RATING_FOR_COMPLETION,
@@ -257,7 +258,6 @@ function getQualifiedRecipesCount(list, minAverageRating = DEFAULT_MIN_AVERAGE_R
 function isCountryCompleted(list, requiredRecipes = DEFAULT_REQUIRED_RECIPES_PER_COUNTRY, minAverageRating = DEFAULT_MIN_AVERAGE_RATING_FOR_COMPLETION) {
   return getQualifiedRecipesCount(list, minAverageRating) >= requiredRecipes;
 }
-
 
 function migrateRecipes(rawRecipes, username = "demo", displayName = "Demo") {
   const migrated = {};
@@ -511,7 +511,6 @@ function AuthScreen({ onLogin, storageError }) {
 }
 
 function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggestions, selectedRegion, requiredRecipes, minAverageRating }) {
-  const activeName = hovered || selected;
   const [position, setPosition] = useState({ coordinates: [10, 20], zoom: 1 });
 
   const regionZooms = {
@@ -897,7 +896,6 @@ function AdminPanel({ settings, onUpdateSettings }) {
   );
 }
 
-
 export default function WeltkochenApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [recipes, setRecipes] = useState(() => loadRecipes("global", "Demo"));
@@ -956,6 +954,7 @@ export default function WeltkochenApp() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [settings, recipes, suggestions, cloudLoaded]);
+
   useEffect(() => {
     setEditingRecipeId(null);
     setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
@@ -998,7 +997,6 @@ export default function WeltkochenApp() {
     saveSettings(nextSettings);
     if (ONLINE_STORAGE_ENABLED) await saveCloudState({ settings: nextSettings, recipes, suggestions });
   }
-
 
   function openRecipe(recipe, country) {
     setOpenedRecipe({ ...recipe, country });
@@ -1130,6 +1128,19 @@ export default function WeltkochenApp() {
     setCollapsedRegions((prev) => ({ ...prev, [regionName]: !prev[regionName] }));
   }
 
+  // MOBILE: Land auswählen und direkt zum Formular springen
+  function selectCountryAndJumpToForm(country) {
+    setSelected(country);
+
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.setTimeout(() => {
+        document
+          .getElementById("recipe-entry-card")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f7edda] text-stone-900" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <header className="border-b-2 border-stone-300 bg-[#fff8e9]/90 px-5 py-4 backdrop-blur">
@@ -1244,13 +1255,13 @@ export default function WeltkochenApp() {
               <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
                 <CardContent className="p-5">
                   <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><h2 className="flex items-center gap-2 text-2xl font-bold"><MapPin /> Länderauswahl</h2><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-500" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Land suchen..." className="w-full rounded-2xl border-2 border-stone-300 bg-white py-2 pl-9 pr-4 outline-none focus:border-amber-500 md:w-64" /></div></div>
-                  <RegionCountryPicker regionRows={regionRows} collapsedRegions={collapsedRegions} toggleRegion={toggleRegion} recipes={recipes} selected={selected} setSelected={setSelected} query={query} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} />
-                  {query && <div className="mt-4 rounded-2xl bg-white p-4"><p className="mb-2 text-sm text-stone-500">Suchergebnisse:</p><div className="flex flex-wrap gap-2">{filteredCountries.slice(0, 30).map((country) => <button key={country} onClick={() => setSelected(country)} className="rounded-full bg-stone-100 px-3 py-1 text-sm hover:bg-stone-200">{country}</button>)}</div></div>}
+                  <RegionCountryPicker regionRows={regionRows} collapsedRegions={collapsedRegions} toggleRegion={toggleRegion} recipes={recipes} selected={selected} setSelected={selectCountryAndJumpToForm} query={query} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} />
+                  {query && <div className="mt-4 rounded-2xl bg-white p-4"><p className="mb-2 text-sm text-stone-500">Suchergebnisse:</p><div className="flex flex-wrap gap-2">{filteredCountries.slice(0, 30).map((country) => <button key={country} onClick={() => selectCountryAndJumpToForm(country)} className="rounded-full bg-stone-100 px-3 py-1 text-sm hover:bg-stone-200">{country}</button>)}</div></div>}
                 </CardContent>
               </Card>
             </section>
 
-            <aside className="lg:sticky lg:top-6 lg:self-start">
+            <aside id="recipe-entry-card" className="scroll-mt-4 lg:sticky lg:top-6 lg:self-start">
               <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
                 <CardContent className="p-6">
                   <div className="mb-5 flex items-center justify-between gap-3"><div><p className="text-sm uppercase tracking-wide text-amber-700">Ausgewähltes Land</p><h2 className="text-3xl font-black">{selected}</h2><p className="text-sm text-stone-500">{getQualifiedRecipesCount(recipes[selected], settings.minAverageRatingForCompletion)} / {settings.requiredRecipesPerCountry} Rezepte über {settings.minAverageRatingForCompletion} Sterne</p></div>{isCountryCompleted(recipes[selected], settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion) && <CheckCircle2 className="h-9 w-9 text-emerald-500" />}</div>
