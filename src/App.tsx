@@ -29,8 +29,6 @@ const ONLINE_STORAGE_ENABLED = Boolean(supabase);
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const DEFAULT_REQUIRED_RECIPES_PER_COUNTRY = 2;
 const DEFAULT_MIN_AVERAGE_RATING_FOR_COMPLETION = 4;
-const ADMIN_USERNAME = "admin";
-const ADMIN_DEFAULT_PASSWORD = "admin123";
 const COLOR_SELECTED = "#1e3a8a";
 const COLOR_HOVER = "#8b5e3c";
 const COLOR_SUGGESTION = "#fde047";
@@ -170,25 +168,8 @@ const defaultSettings = {
   inviteCodes: [],
 };
 
-function createDefaultUsers() {
-  return {
-    [ADMIN_USERNAME]: {
-      username: ADMIN_USERNAME,
-      displayName: "Admin",
-      password: ADMIN_DEFAULT_PASSWORD,
-      role: "admin",
-      blocked: false,
-      createdAt: new Date().toISOString(),
-    },
-  };
-}
-
 function normalizeCloudState(raw = {}) {
-  const users = raw.users && typeof raw.users === "object" ? raw.users : createDefaultUsers();
-  if (!users[ADMIN_USERNAME]) users[ADMIN_USERNAME] = createDefaultUsers()[ADMIN_USERNAME];
-
   return {
-    users,
     settings: { ...defaultSettings, ...(raw.settings || {}) },
     recipes: Object.keys(raw.recipes || {}).length ? migrateRecipes(raw.recipes, "demo", "Demo") : starterRecipes,
     suggestions: Object.keys(raw.suggestions || {}).length ? raw.suggestions : starterSuggestions,
@@ -202,28 +183,29 @@ async function loadCloudState() {
     .select("data")
     .eq("id", APP_STATE_ID)
     .maybeSingle();
-
   if (error) throw error;
-  if (!data?.data) {
-    const initial = normalizeCloudState({});
-    await saveCloudState(initial);
-    return initial;
-  }
-  return normalizeCloudState(data.data);
+  return normalizeCloudState(data?.data || {});
 }
 
 async function saveCloudState(state) {
   if (!ONLINE_STORAGE_ENABLED) return;
   const { error } = await supabase
     .from("weltkochen_state")
-    .upsert({
-      id: APP_STATE_ID,
-      data: state,
-      updated_at: new Date().toISOString(),
-    });
+    .upsert({ id: APP_STATE_ID, data: state, updated_at: new Date().toISOString() });
   if (error) throw error;
 }
 
+async function getMyProfile() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase.from("weltkochen_profiles").select("*").eq("id", user.id).single();
+  if (error) throw error;
+  if (data.blocked) {
+    await supabase.auth.signOut();
+    throw new Error("Dieser Benutzer ist gesperrt.");
+  }
+  return { id: data.id, email: data.email, username: data.username, displayName: data.display_name, role: data.role };
+}
 
 function toGermanCountryName(name) {
   return geoNameToGerman[name] || name;
@@ -276,32 +258,6 @@ function isCountryCompleted(list, requiredRecipes = DEFAULT_REQUIRED_RECIPES_PER
   return getQualifiedRecipesCount(list, minAverageRating) >= requiredRecipes;
 }
 
-function loadUsers() {
-  try {
-    const users = JSON.parse(localStorage.getItem("weltkochen-users") || "{}");
-    if (!users[ADMIN_USERNAME]) users[ADMIN_USERNAME] = createDefaultUsers()[ADMIN_USERNAME];
-    return users;
-  } catch {
-    return createDefaultUsers();
-  }
-}
-
-function saveUsers(users) {
-  localStorage.setItem("weltkochen-users", JSON.stringify(users));
-}
-
-function loadSession() {
-  try {
-    return JSON.parse(localStorage.getItem("weltkochen-session") || "null");
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(user) {
-  if (user) localStorage.setItem("weltkochen-session", JSON.stringify(user));
-  else localStorage.removeItem("weltkochen-session");
-}
 
 function migrateRecipes(rawRecipes, username = "demo", displayName = "Demo") {
   const migrated = {};
@@ -470,8 +426,9 @@ function RatingStars({ value = 0, onChange, small = false }) {
   );
 }
 
-function AuthScreen({ onLogin, users, settings, onUpdateUsers, onUpdateSettings, storageError }) {
+function AuthScreen({ onLogin, storageError }) {
   const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -481,69 +438,41 @@ function AuthScreen({ onLogin, users, settings, onUpdateUsers, onUpdateSettings,
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const cleanUsername = username.trim().toLowerCase();
     setError("");
     setBusy(true);
-
     try {
-      if (!cleanUsername || !password) {
-        setError("Bitte Benutzername und Passwort eingeben.");
-        return;
-      }
+      if (!supabase) throw new Error("Supabase ist nicht verbunden.");
+      if (!email.trim() || !password) throw new Error("Bitte E-Mail und Passwort eingeben.");
 
       if (mode === "register") {
-        if (!settings.allowRegistration) {
-          setError("Die Registrierung ist aktuell vom Admin deaktiviert.");
-          return;
-        }
-        if (cleanUsername === ADMIN_USERNAME) {
-          setError("Dieser Benutzername ist reserviert.");
-          return;
-        }
-        const validInvite = findValidInviteCode(settings, inviteCode);
-        if (!validInvite) {
-          setError("Bitte gib einen gültigen Einladungscode ein.");
-          return;
-        }
-        if (users[cleanUsername]) {
-          setError("Diesen Benutzer gibt es schon.");
-          return;
-        }
-        const newUser = {
-          username: cleanUsername,
-          displayName: displayName.trim() || cleanUsername,
+        if (!username.trim()) throw new Error("Bitte einen Benutzernamen eingeben.");
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
           password,
-          role: "user",
-          blocked: false,
-          createdAt: new Date().toISOString(),
-        };
-        await onUpdateUsers({ ...users, [cleanUsername]: newUser });
-        await onUpdateSettings({
-          ...settings,
-          inviteCodes: (settings.inviteCodes || []).map((item) => (
-            item.code === validInvite.code ? { ...item, usedBy: cleanUsername, usedAt: new Date().toISOString() } : item
-          )),
         });
-        const session = { username: cleanUsername, displayName: newUser.displayName, role: newUser.role };
-        saveSession(session);
-        onLogin(session);
-        return;
+        if (signUpError) throw signUpError;
+        if (!data.session) throw new Error("Bitte bestätige zuerst die E-Mail und melde dich danach an.");
+
+        const { error: claimError } = await supabase.rpc("weltkochen_claim_profile", {
+          p_username: username.trim().toLowerCase(),
+          p_display_name: displayName.trim() || username.trim(),
+          p_invite_code: inviteCode.trim().toUpperCase(),
+        });
+        if (claimError) {
+          await supabase.auth.signOut();
+          throw claimError;
+        }
+      } else {
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (loginError) throw loginError;
       }
 
-      const existingUser = users[cleanUsername];
-      if (!existingUser || existingUser.password !== password) {
-        setError("Benutzername oder Passwort ist falsch.");
-        return;
-      }
-      if (existingUser.blocked) {
-        setError("Dieser Benutzer ist gesperrt. Bitte wende dich an den Admin.");
-        return;
-      }
-      const session = { username: cleanUsername, displayName: existingUser.displayName, role: existingUser.role || "user" };
-      saveSession(session);
-      onLogin(session);
+      onLogin(await getMyProfile());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+      setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -553,37 +482,27 @@ function AuthScreen({ onLogin, users, settings, onUpdateUsers, onUpdateSettings,
     <div className="min-h-screen bg-[#f7edda] px-5 py-10 text-stone-900">
       <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[1fr_.9fr] md:items-center">
         <section className="rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] p-8 shadow-sm">
-          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-stone-900 bg-white">
-            <ChefHat className="h-8 w-8" />
-          </div>
+          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-stone-900 bg-white"><ChefHat className="h-8 w-8" /></div>
           <h1 className="text-4xl font-black uppercase tracking-wide md:text-6xl">Koch dich um die Welt</h1>
-          <p className="mt-4 text-lg text-stone-600">Online-Version mit gemeinsamer Speicherung für dich und deine Freunde.</p>
+          <p className="mt-4 text-lg text-stone-600">Sicherer Login über Supabase Auth.</p>
           {storageError && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{storageError}</p>}
-          {!ONLINE_STORAGE_ENABLED && <p className="mt-4 rounded-2xl border border-amber-200 bg-yellow-50 p-3 text-sm font-semibold text-amber-800">Supabase ist noch nicht verbunden. Setze VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY.</p>}
         </section>
-
         <form onSubmit={handleSubmit} className="rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] p-6 shadow-sm">
           <div className="mb-5 flex rounded-2xl bg-stone-100 p-1">
             <button type="button" onClick={() => setMode("login")} className={`flex-1 rounded-xl px-4 py-3 font-bold ${mode === "login" ? "bg-white shadow-sm" : "text-stone-500"}`}>Anmelden</button>
             <button type="button" onClick={() => setMode("register")} className={`flex-1 rounded-xl px-4 py-3 font-bold ${mode === "register" ? "bg-white shadow-sm" : "text-stone-500"}`}>Benutzer anlegen</button>
           </div>
-
           <h2 className="text-2xl font-black">{mode === "login" ? "Einloggen" : "Neues Profil"}</h2>
-          <p className="mt-1 text-sm text-stone-500">Admin-Startlogin: admin / admin123. Bitte danach Passwort ändern.</p>
-
           <div className="mt-5 space-y-4">
-            {mode === "register" && (
-              <>
-                <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Anzeigename</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
-                <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Einladungscode</span><input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="z. B. KOCH-ABCD-1234" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 uppercase outline-none focus:border-amber-500" /></label>
-              </>
-            )}
-            <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Benutzername</span><input value={username} onChange={(event) => setUsername(event.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
-            <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Passwort</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
+            {mode === "register" && <>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Anzeigename</span><input value={displayName} onChange={e=>setDisplayName(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Benutzername</span><input value={username} onChange={e=>setUsername(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Einladungscode</span><input value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 uppercase" /></label>
+            </>}
+            <label className="block"><span className="mb-1 block text-sm font-semibold">E-Mail</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Passwort</span><input type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
             {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}
-            <Button type="submit" disabled={busy} className="w-full rounded-2xl bg-stone-900 py-6 text-white hover:bg-stone-700 disabled:opacity-60">
-              {busy ? "Speichere..." : mode === "login" ? "Anmelden" : "Benutzer erstellen"}
-            </Button>
+            <Button type="submit" disabled={busy} className="w-full rounded-2xl bg-stone-900 py-6 text-white">{busy ? "Bitte warten..." : mode === "login" ? "Anmelden" : "Benutzer erstellen"}</Button>
           </div>
         </form>
       </div>
@@ -784,173 +703,30 @@ function RegionCountryPicker({ regionRows, collapsedRegions, toggleRegion, recip
   );
 }
 
-function AdminPanel({ users, settings, onUpdateUsers, onUpdateSettings }) {
+function AdminPanel({ settings, onUpdateSettings }) {
   const [requiredRecipes, setRequiredRecipes] = useState(String(settings.requiredRecipesPerCountry));
   const [minAverageRating, setMinAverageRating] = useState(String(settings.minAverageRatingForCompletion));
-  const [message, setMessage] = useState("");
-
-  function createInviteCode() {
-    const existing = new Set((settings.inviteCodes || []).map((item) => item.code));
-    let code = generateInviteCode();
-    while (existing.has(code)) code = generateInviteCode();
-    onUpdateSettings({
-      ...settings,
-      inviteCodes: [
-        { code, createdAt: new Date().toISOString(), usedBy: "", usedAt: "" },
-        ...(settings.inviteCodes || []),
-      ],
+  function saveRules() {
+    onUpdateSettings({ ...settings,
+      requiredRecipesPerCountry: Math.max(1, Number(requiredRecipes) || 2),
+      minAverageRatingForCompletion: Math.max(0, Math.min(5, Number(minAverageRating) || 4))
     });
-    setMessage(`Einladungscode erstellt: ${code}`);
   }
-
-  function deleteInviteCode(code) {
-    onUpdateSettings({
-      ...settings,
-      inviteCodes: (settings.inviteCodes || []).filter((item) => item.code !== code),
-    });
-    setMessage("Einladungscode wurde gelöscht.");
-  }
-
-  function changePassword(username) {
-    const nextPassword = window.prompt(`Neues Passwort für ${username}:`);
-    if (!nextPassword) return;
-    const nextUsers = { ...users, [username]: { ...users[username], password: nextPassword } };
-    onUpdateUsers(nextUsers);
-    setMessage(`Passwort für ${username} wurde geändert.`);
-  }
-
-  function toggleBlocked(username) {
-    if (username === ADMIN_USERNAME) return;
-    const nextUsers = { ...users, [username]: { ...users[username], blocked: !users[username].blocked } };
-    onUpdateUsers(nextUsers);
-  }
-
-  function toggleRegistration() {
-    onUpdateSettings({ ...settings, allowRegistration: !settings.allowRegistration });
-  }
-
-  function saveRequiredRecipes() {
-    const parsedRecipes = Math.max(1, Number(requiredRecipes) || DEFAULT_REQUIRED_RECIPES_PER_COUNTRY);
-    const parsedRating = Math.max(0, Math.min(5, Number(minAverageRating) || DEFAULT_MIN_AVERAGE_RATING_FOR_COMPLETION));
-    onUpdateSettings({
-      ...settings,
-      requiredRecipesPerCountry: parsedRecipes,
-      minAverageRatingForCompletion: parsedRating,
-    });
-    setRequiredRecipes(String(parsedRecipes));
-    setMinAverageRating(String(parsedRating));
-    setMessage(`Abschlussregel: ${parsedRecipes} Rezepte mit Durchschnitt über ${parsedRating} Sternen.`);
-  }
-
-  function resetAllDemoData() {
-    const ok = window.confirm("Wirklich alle gespeicherten Rezepte, Vorschläge und Sessions löschen? Nutzer bleiben erhalten.");
-    if (!ok) return;
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith("weltkochen-recipes-") || key.startsWith("weltkochen-suggestions-") || key === "weltkochen-session") {
-        localStorage.removeItem(key);
-      }
-    });
-    setMessage("Rezepte, Vorschläge und Sessions wurden gelöscht. Bitte Seite neu laden.");
-  }
-
-  return (
-    <main className="mx-auto max-w-7xl px-5 py-8">
-      <section className="mb-6 rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] p-6 shadow-sm">
-        <h2 className="text-4xl font-black">Admin-Bereich</h2>
-        <p className="mt-2 text-stone-600">Hier kannst du Nutzer, Passwörter und globale Einstellungen verwalten.</p>
-        {message && <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</div>}
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-[.8fr_1.2fr]">
-        <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
-          <CardContent className="p-6">
-            <h3 className="text-2xl font-black">Globale Einstellungen</h3>
-            <label className="mt-5 block">
-              <span className="mb-1 block text-sm font-semibold text-stone-600">Benötigte gut bewertete Rezepte pro Land</span>
-              <input value={requiredRecipes} onChange={(event) => setRequiredRecipes(event.target.value)} type="number" min="1" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" />
-            </label>
-            <label className="mt-5 block">
-              <span className="mb-1 block text-sm font-semibold text-stone-600">Mindest-Durchschnittsbewertung, die überschritten werden muss</span>
-              <input value={minAverageRating} onChange={(event) => setMinAverageRating(event.target.value)} type="number" min="0" max="5" step="0.1" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" />
-              <p className="mt-2 text-xs text-stone-500">Beispiel: Wert 4 bedeutet: Nur Rezepte mit Durchschnitt über 4 Sternen zählen.</p>
-            </label>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Button onClick={saveRequiredRecipes} className="rounded-2xl bg-amber-400 px-5 py-5 text-stone-950 hover:bg-amber-300">Speichern</Button>
-              <Button onClick={toggleRegistration} variant="outline" className="rounded-2xl border-stone-300 bg-white px-5 py-5 text-stone-800 hover:bg-stone-100">
-                Registrierung {settings.allowRegistration ? "deaktivieren" : "aktivieren"}
-              </Button>
-            </div>
-            <div className="mt-5 rounded-2xl bg-white p-4 text-sm text-stone-600">
-              Registrierung: <b>{settings.allowRegistration ? "aktiv" : "deaktiviert"}</b>
-            </div>
-            <Button onClick={resetAllDemoData} variant="outline" className="mt-5 rounded-2xl border-red-200 bg-red-50 px-5 py-5 text-red-700 hover:bg-red-100">
-              Rezepte & Vorschläge zurücksetzen
-            </Button>
-
-            <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h4 className="text-xl font-black">Einladungscodes</h4>
-                  <p className="text-sm text-stone-500">Neue Nutzer brauchen einen freien Code.</p>
-                </div>
-                <Button onClick={createInviteCode} className="rounded-2xl bg-stone-900 px-4 py-5 text-white hover:bg-stone-700">
-                  <Plus className="mr-2 h-4 w-4" /> Code erzeugen
-                </Button>
-              </div>
-              <div className="mt-4 space-y-2">
-                {(settings.inviteCodes || []).map((item) => (
-                  <div key={item.code} className={`rounded-xl border p-3 text-sm ${item.usedBy ? "border-stone-200 bg-stone-50 text-stone-500" : "border-amber-200 bg-yellow-50 text-stone-900"}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-black tracking-wider">{item.code}</p>
-                        <p>{item.usedBy ? `verwendet von ${item.usedBy}` : "frei"}</p>
-                      </div>
-                      <Button onClick={() => deleteInviteCode(item.code)} variant="outline" className="rounded-xl border-stone-300 bg-white text-stone-800 hover:bg-stone-100">
-                        Löschen
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {!(settings.inviteCodes || []).length && <p className="text-sm text-stone-500">Noch keine Einladungscodes erstellt.</p>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
-          <CardContent className="p-6">
-            <h3 className="text-2xl font-black">Nutzerverwaltung</h3>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
-              {Object.values(users).sort((a, b) => a.username.localeCompare(b.username)).map((user) => (
-                <div key={user.username} className="grid gap-3 border-b border-stone-200 p-4 md:grid-cols-[1fr_auto] md:items-center">
-                  <div>
-                    <p className="font-black">{user.displayName || user.username}</p>
-                    <p className="text-sm text-stone-500">@{user.username} · {user.role || "user"} · {user.blocked ? "gesperrt" : "aktiv"}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => changePassword(user.username)} variant="outline" className="rounded-xl border-stone-300 bg-white text-stone-800 hover:bg-stone-100">Passwort ändern</Button>
-                    {user.username !== ADMIN_USERNAME && (
-                      <Button onClick={() => toggleBlocked(user.username)} variant="outline" className={`rounded-xl border-stone-300 ${user.blocked ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-                        {user.blocked ? "Entsperren" : "Sperren"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
-  );
+  return <main className="mx-auto max-w-4xl px-5 py-8">
+    <Card className="border-2 border-stone-300 bg-[#fff8e9]"><CardContent className="p-6">
+      <h2 className="text-4xl font-black">Admin-Bereich</h2>
+      <p className="mt-2 text-stone-600">Benutzer und Passwörter werden jetzt sicher über Supabase Auth verwaltet.</p>
+      <label className="mt-6 block"><span className="text-sm font-semibold">Benötigte Rezepte pro Land</span><input type="number" min="1" value={requiredRecipes} onChange={e=>setRequiredRecipes(e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+      <label className="mt-4 block"><span className="text-sm font-semibold">Mindestbewertung</span><input type="number" min="0" max="5" step=".1" value={minAverageRating} onChange={e=>setMinAverageRating(e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+      <Button onClick={saveRules} className="mt-5 rounded-2xl bg-amber-400 px-5 py-5 text-stone-950">Speichern</Button>
+    </CardContent></Card>
+  </main>;
 }
 
 export default function WeltkochenApp() {
-  const initialSession = loadSession();
-  const [currentUser, setCurrentUser] = useState(initialSession);
+  const [currentUser, setCurrentUser] = useState(null);
   const [recipes, setRecipes] = useState(() => loadRecipes("global", "Demo"));
   const [settings, setSettings] = useState(loadSettings);
-  const [users, setUsers] = useState(loadUsers);
   const [suggestions, setSuggestions] = useState(() => loadSuggestions("global"));
   const [cloudLoaded, setCloudLoaded] = useState(!ONLINE_STORAGE_ENABLED);
   const [storageError, setStorageError] = useState("");
@@ -963,7 +739,7 @@ export default function WeltkochenApp() {
   const [openedSuggestion, setOpenedSuggestion] = useState(null);
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [openedRecipe, setOpenedRecipe] = useState(null);
-  const [page, setPage] = useState(initialSession?.role === "admin" ? "admin" : "karte");
+  const [page, setPage] = useState("karte");
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -973,8 +749,9 @@ export default function WeltkochenApp() {
     async function boot() {
       try {
         const cloud = await loadCloudState();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && !cancelled) setCurrentUser(await getMyProfile());
         if (!cancelled && cloud) {
-          setUsers(cloud.users);
           setSettings(cloud.settings);
           setRecipes(cloud.recipes);
           setSuggestions(cloud.suggestions);
@@ -992,19 +769,18 @@ export default function WeltkochenApp() {
   useEffect(() => {
     saveRecipes("global", recipes);
     saveSettings(settings);
-    saveUsers(users);
     saveSuggestions("global", suggestions);
     if (!cloudLoaded || !ONLINE_STORAGE_ENABLED) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveCloudState({ users, settings, recipes, suggestions }).catch((error) => {
+      saveCloudState({ settings, recipes, suggestions }).catch((error) => {
         setStorageError(error instanceof Error ? error.message : "Online-Speichern fehlgeschlagen.");
       });
     }, 500);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [users, settings, recipes, suggestions, cloudLoaded]);
+  }, [settings, recipes, suggestions, cloudLoaded]);
   useEffect(() => {
     setEditingRecipeId(null);
     setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
@@ -1034,24 +810,20 @@ export default function WeltkochenApp() {
     return <div className="grid min-h-screen place-items-center bg-[#f7edda] p-6 text-center text-stone-800"><div><ChefHat className="mx-auto mb-4 h-12 w-12" /><h1 className="text-3xl font-black">Lade Online-Daten...</h1></div></div>;
   }
 
-  if (!currentUser) return <AuthScreen onLogin={setCurrentUser} users={users} settings={settings} onUpdateUsers={updateUsers} onUpdateSettings={updateSettings} storageError={storageError} />;
+  if (!currentUser) return <AuthScreen onLogin={(user) => { setCurrentUser(user); setPage(user?.role === "admin" ? "admin" : "karte"); }} storageError={storageError} />;
 
-  function logout() {
-    saveSession(null);
+  async function logout() {
+    await supabase.auth.signOut();
     setCurrentUser(null);
+    setPage("karte");
   }
 
   async function updateSettings(nextSettings) {
     setSettings(nextSettings);
     saveSettings(nextSettings);
-    if (ONLINE_STORAGE_ENABLED) await saveCloudState({ users, settings: nextSettings, recipes, suggestions });
+    if (ONLINE_STORAGE_ENABLED) await saveCloudState({ settings: nextSettings, recipes, suggestions });
   }
 
-  async function updateUsers(nextUsers) {
-    setUsers(nextUsers);
-    saveUsers(nextUsers);
-    if (ONLINE_STORAGE_ENABLED) await saveCloudState({ users: nextUsers, settings, recipes, suggestions });
-  }
 
   function openRecipe(recipe, country) {
     setOpenedRecipe({ ...recipe, country });
@@ -1210,7 +982,7 @@ export default function WeltkochenApp() {
       </header>
 
       {page === "admin" && currentUser.role === "admin" ? (
-        <AdminPanel users={users} settings={settings} onUpdateUsers={updateUsers} onUpdateSettings={updateSettings} />
+        <AdminPanel settings={settings} onUpdateSettings={updateSettings} />
       ) : page === "karte" ? (
         <main className="mx-auto grid max-w-[1600px] gap-6 px-5 py-8 lg:grid-cols-[1.65fr_.85fr]">
           <section className="space-y-5">
