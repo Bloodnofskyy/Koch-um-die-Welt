@@ -706,22 +706,197 @@ function RegionCountryPicker({ regionRows, collapsedRegions, toggleRegion, recip
 function AdminPanel({ settings, onUpdateSettings }) {
   const [requiredRecipes, setRequiredRecipes] = useState(String(settings.requiredRecipesPerCountry));
   const [minAverageRating, setMinAverageRating] = useState(String(settings.minAverageRatingForCompletion));
+  const [inviteCodes, setInviteCodes] = useState([]);
+  const [inviteLoading, setInviteLoading] = useState(true);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    loadInviteCodes();
+  }, []);
+
+  async function loadInviteCodes() {
+    if (!supabase) return;
+    setInviteLoading(true);
+    setInviteError("");
+
+    const { data, error } = await supabase
+      .from("weltkochen_invite_codes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setInviteError(error.message);
+      setInviteCodes([]);
+    } else {
+      setInviteCodes(data || []);
+    }
+
+    setInviteLoading(false);
+  }
+
+  async function createInviteCode() {
+    if (!supabase || inviteBusy) return;
+
+    setInviteBusy(true);
+    setInviteMessage("");
+    setInviteError("");
+
+    const { data, error } = await supabase.rpc("weltkochen_create_invite_code");
+
+    if (error) {
+      setInviteError(error.message);
+    } else {
+      setInviteMessage(`Neuer Einladungscode: ${data}`);
+      await loadInviteCodes();
+    }
+
+    setInviteBusy(false);
+  }
+
+  async function copyInviteCode(code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setInviteMessage(`${code} wurde kopiert.`);
+      setInviteError("");
+    } catch {
+      setInviteError("Der Code konnte nicht automatisch kopiert werden.");
+    }
+  }
+
   function saveRules() {
-    onUpdateSettings({ ...settings,
+    onUpdateSettings({
+      ...settings,
       requiredRecipesPerCountry: Math.max(1, Number(requiredRecipes) || 2),
-      minAverageRatingForCompletion: Math.max(0, Math.min(5, Number(minAverageRating) || 4))
+      minAverageRatingForCompletion: Math.max(0, Math.min(5, Number(minAverageRating) || 4)),
     });
   }
-  return <main className="mx-auto max-w-4xl px-5 py-8">
-    <Card className="border-2 border-stone-300 bg-[#fff8e9]"><CardContent className="p-6">
-      <h2 className="text-4xl font-black">Admin-Bereich</h2>
-      <p className="mt-2 text-stone-600">Benutzer und Passwörter werden jetzt sicher über Supabase Auth verwaltet.</p>
-      <label className="mt-6 block"><span className="text-sm font-semibold">Benötigte Rezepte pro Land</span><input type="number" min="1" value={requiredRecipes} onChange={e=>setRequiredRecipes(e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
-      <label className="mt-4 block"><span className="text-sm font-semibold">Mindestbewertung</span><input type="number" min="0" max="5" step=".1" value={minAverageRating} onChange={e=>setMinAverageRating(e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
-      <Button onClick={saveRules} className="mt-5 rounded-2xl bg-amber-400 px-5 py-5 text-stone-950">Speichern</Button>
-    </CardContent></Card>
-  </main>;
+
+  return (
+    <main className="mx-auto max-w-4xl px-5 py-8">
+      <div className="space-y-6">
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="p-6">
+            <h2 className="text-4xl font-black">Admin-Bereich</h2>
+            <p className="mt-2 text-stone-600">
+              Benutzer und Passwörter werden sicher über Supabase Auth verwaltet.
+            </p>
+
+            <label className="mt-6 block">
+              <span className="text-sm font-semibold">Benötigte Rezepte pro Land</span>
+              <input
+                type="number"
+                min="1"
+                value={requiredRecipes}
+                onChange={(e) => setRequiredRecipes(e.target.value)}
+                className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3"
+              />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="text-sm font-semibold">Mindestbewertung</span>
+              <input
+                type="number"
+                min="0"
+                max="5"
+                step=".1"
+                value={minAverageRating}
+                onChange={(e) => setMinAverageRating(e.target.value)}
+                className="mt-1 w-full rounded-2xl border-2 border-stone-300 bg-white p-3"
+              />
+            </label>
+
+            <Button
+              onClick={saveRules}
+              className="mt-5 rounded-2xl bg-amber-400 px-5 py-5 text-stone-950"
+            >
+              Speichern
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-2xl font-black">Einladungscodes</h3>
+                <p className="mt-1 text-sm text-stone-600">
+                  Neue Benutzer benötigen einen freien Einladungscode.
+                </p>
+              </div>
+
+              <Button
+                onClick={createInviteCode}
+                disabled={inviteBusy}
+                className="rounded-2xl bg-stone-900 px-5 py-5 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {inviteBusy ? "Erstelle..." : "Einladungscode erstellen"}
+              </Button>
+            </div>
+
+            {inviteMessage && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                {inviteMessage}
+              </div>
+            )}
+
+            {inviteError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                {inviteError}
+              </div>
+            )}
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+              {inviteLoading ? (
+                <p className="p-4 text-stone-500">Einladungscodes werden geladen...</p>
+              ) : inviteCodes.length ? (
+                <div className="divide-y divide-stone-200">
+                  {inviteCodes.map((invite) => {
+                    const used = Boolean(invite.used_by || invite.used_at);
+                    return (
+                      <div
+                        key={invite.code}
+                        className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <div className="font-mono text-lg font-black">{invite.code}</div>
+                          <div className="mt-1 text-sm text-stone-500">
+                            {used ? "Benutzt" : "Frei"}
+                            {invite.created_at
+                              ? ` · erstellt ${new Date(invite.created_at).toLocaleDateString("de-DE")}`
+                              : ""}
+                          </div>
+                        </div>
+
+                        {!used && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => copyInviteCode(invite.code)}
+                            className="rounded-xl border-stone-300 bg-white"
+                          >
+                            Kopieren
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="p-4 text-stone-500">
+                  Noch keine Einladungscodes vorhanden.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
 }
+
 
 export default function WeltkochenApp() {
   const [currentUser, setCurrentUser] = useState(null);
