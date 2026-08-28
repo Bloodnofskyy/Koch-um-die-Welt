@@ -399,3 +399,96 @@ select {
     padding-bottom: 24px !important;
   }
 }
+
+
+/* ===== Mobile Feinschliff v3 ===== */
+@media (max-width: 767px) {
+  /* Wichtig: backdrop-filter am Header erzeugt auf iOS einen eigenen
+     Bezugspunkt für position: fixed. Dadurch hing die Nav oben fest. */
+  header {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  header nav {
+    position: fixed !important;
+    top: auto !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    z-index: 9999 !important;
+  }
+
+  /* Der Statistikblock aus App.tsx:
+     <div class="grid gap-4 ... md:grid-cols-3"> */
+  main section > div.grid.gap-4.rounded-3xl {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  main section > div.grid.gap-4.rounded-3xl > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    padding: 9px 3px !important;
+    border-right: 0 !important;
+    text-align: center !important;
+  }
+
+  main section > div.grid.gap-4.rounded-3xl > div svg {
+    width: 24px !important;
+    height: 24px !important;
+    flex: 0 0 auto;
+  }
+
+  main section > div.grid.gap-4.rounded-3xl > div p:first-child {
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    white-space: normal !important;
+  }
+
+  main section > div.grid.gap-4.rounded-3xl > div p:last-child {
+    font-size: 1.05rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Karte noch etwas flacher – auf dem Handy reicht das völlig */
+  .h-\[760px\] {
+    height: 330px !important;
+  }
+
+  /* Infobox über der Karte weniger dominant */
+  .absolute.left-8.top-8 {
+    max-width: 165px !important;
+    padding: 8px 9px !important;
+  }
+
+  .absolute.left-8.top-8 h2 {
+    font-size: 1rem !important;
+  }
+
+  .absolute.left-8.top-8 p {
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Abstand zwischen den Hauptblöcken kleiner */
+  main section.space-y-5 {
+    gap: 12px !important;
+  }
+
+  /* Suchfeld + Kontinent-Auswahl enger */
+  aside.space-y-5 {
+    gap: 12px !important;
+  }
+
+  aside > div.grid.gap-3 {
+    gap: 8px !important;
+  }
+}
