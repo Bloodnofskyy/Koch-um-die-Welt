@@ -1435,19 +1435,27 @@ export default function WeltkochenApp() {
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [deleteChallenge, setDeleteChallenge] = useState(null);
+  const [deleteChallengeAnswer, setDeleteChallengeAnswer] = useState("");
+  const [deleteChallengeError, setDeleteChallengeError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     async function boot() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const cloud = await loadCloudState();
-        if (!cancelled && cloud) setSettings(cloud.settings);
         if (session && !cancelled) {
           const profile = await getMyProfile();
           setCurrentUser(profile);
-          const content = await loadNormalizedContent();
-          if (!cancelled) { setRecipes(content.recipes); setSuggestions(content.suggestions); }
+          const [cloud, content] = await Promise.all([
+            loadCloudState().catch(() => null),
+            loadNormalizedContent(),
+          ]);
+          if (!cancelled) {
+            if (cloud?.settings) setSettings(cloud.settings);
+            setRecipes(content.recipes);
+            setSuggestions(content.suggestions);
+          }
         }
       } catch (error) {
         if (!cancelled) setStorageError(error instanceof Error ? error.message : "Online-Speicher konnte nicht geladen werden.");
@@ -1682,6 +1690,62 @@ export default function WeltkochenApp() {
     } catch (error) {
       setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gespeichert werden.");
     }
+  }
+
+  const deletePuzzles = [
+    { question: "Was ist 2 + 3?", answer: "5" },
+    { question: "Was ist 10 - 4?", answer: "6" },
+    { question: "Was ist 3 × 3?", answer: "9" },
+    { question: "Was ist 12 ÷ 3?", answer: "4" },
+    { question: "Wie viele Tage hat eine Woche?", answer: "7" },
+    { question: "Wie viele Monate hat ein Jahr?", answer: "12" },
+    { question: "Welche Farbe entsteht aus Blau und Gelb?", answer: "grün" },
+    { question: "Wie viele Beine hat eine Spinne?", answer: "8" },
+    { question: "Was ist 5 + 5?", answer: "10" },
+    { question: "Was ist 9 - 2?", answer: "7" },
+    { question: "Was ist 4 × 2?", answer: "8" },
+    { question: "Was ist 15 ÷ 5?", answer: "3" },
+    { question: "Welcher Tag kommt nach Montag?", answer: "dienstag" },
+    { question: "Welche Jahreszeit kommt nach dem Sommer?", answer: "herbst" },
+    { question: "Wie viele Stunden hat ein Tag?", answer: "24" },
+    { question: "Was ist 1 + 6?", answer: "7" },
+    { question: "Was ist 20 - 10?", answer: "10" },
+    { question: "Was ist 6 ÷ 2?", answer: "3" },
+    { question: "Wie viele Minuten hat eine Stunde?", answer: "60" },
+    { question: "Welche Zahl kommt nach 19?", answer: "20" },
+  ];
+
+  function normalizePuzzleAnswer(value) {
+    return String(value || "")
+      .trim()
+      .toLocaleLowerCase("de-DE")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function startDeleteRecipeChallenge() {
+    if (!editingRecipeId) {
+      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+      setImageError("");
+      return;
+    }
+    const puzzle = deletePuzzles[Math.floor(Math.random() * deletePuzzles.length)];
+    setDeleteChallenge(puzzle);
+    setDeleteChallengeAnswer("");
+    setDeleteChallengeError("");
+  }
+
+  async function confirmDeleteRecipeChallenge() {
+    if (!deleteChallenge) return;
+    const correct = normalizePuzzleAnswer(deleteChallengeAnswer) === normalizePuzzleAnswer(deleteChallenge.answer);
+    if (!correct) {
+      setDeleteChallengeError("Noch nicht richtig. Versuch es nochmal.");
+      return;
+    }
+    setDeleteChallenge(null);
+    setDeleteChallengeAnswer("");
+    setDeleteChallengeError("");
+    await clearRecipe();
   }
 
   async function clearRecipe() {
@@ -2088,7 +2152,7 @@ export default function WeltkochenApp() {
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Zubereitung</span><textarea value={form.recipe} onChange={(event) => setForm({ ...form, recipe: event.target.value })} placeholder="Zubereitungsschritte eintragen..." rows={7} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
                     <div className="rounded-2xl border border-stone-200 bg-white p-3 text-sm text-stone-600">{editingRecipeId ? "Du bearbeitest ein bestehendes Rezept." : `Neues Rezept wird als erstellt von ${currentUser.displayName} gespeichert.`}</div>
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Notizen</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Wer hat gekocht? Was würdet ihr ändern?" rows={4} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
-                    <div className="flex flex-wrap gap-3"><Button onClick={saveRecipe} className="rounded-2xl bg-amber-400 px-5 py-6 text-stone-950 hover:bg-amber-300"><Plus className="mr-2 h-4 w-4" /> {editingRecipeId ? "Änderungen speichern" : "Neues Rezept speichern"}</Button><Button onClick={clearRecipe} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-5 py-6 text-stone-800 hover:bg-stone-100"><Trash2 className="mr-2 h-4 w-4" /> {editingRecipeId ? "Rezept löschen" : "Zurücksetzen"}</Button></div>
+                    <div className="flex flex-wrap gap-3"><Button onClick={saveRecipe} className="rounded-2xl bg-amber-400 px-5 py-6 text-stone-950 hover:bg-amber-300"><Plus className="mr-2 h-4 w-4" /> {editingRecipeId ? "Änderungen speichern" : "Neues Rezept speichern"}</Button><Button onClick={editingRecipeId ? startDeleteRecipeChallenge : clearRecipe} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-5 py-6 text-stone-800 hover:bg-stone-100"><Trash2 className="mr-2 h-4 w-4" /> {editingRecipeId ? "Rezept löschen" : "Zurücksetzen"}</Button></div>
                   </div>
 
                   <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-4">
@@ -2109,6 +2173,69 @@ export default function WeltkochenApp() {
             </aside>
           </div>
         </main>
+      )}
+
+      {deleteChallenge && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl border-2 border-stone-300 bg-[#fffaf0] p-6 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Sicherheitsfrage</p>
+                <h2 className="mt-1 text-2xl font-black">Rezept wirklich löschen?</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setDeleteChallenge(null); setDeleteChallengeAnswer(""); setDeleteChallengeError(""); }}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-stone-300 bg-white"
+                aria-label="Abbrechen"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mb-4 text-stone-600">Beantworte eine kleine Frage. Erst dann wird das Rezept endgültig gelöscht.</p>
+
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-center text-xl font-black">
+              {deleteChallenge.question}
+            </div>
+
+            <input
+              autoFocus
+              value={deleteChallengeAnswer}
+              onChange={(event) => { setDeleteChallengeAnswer(event.target.value); setDeleteChallengeError(""); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  confirmDeleteRecipeChallenge();
+                }
+              }}
+              placeholder="Antwort eingeben"
+              className="mt-4 w-full rounded-2xl border-2 border-stone-300 bg-white px-4 py-3 text-lg outline-none focus:border-amber-500"
+            />
+
+            {deleteChallengeError && (
+              <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{deleteChallengeError}</p>
+            )}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setDeleteChallenge(null); setDeleteChallengeAnswer(""); setDeleteChallengeError(""); }}
+                className="rounded-xl border-stone-300 bg-white"
+              >
+                Abbrechen
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDeleteRecipeChallenge}
+                className="rounded-xl bg-red-600 text-white hover:bg-red-700"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Antwort prüfen & löschen
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {suggestionDialogOpen && (
