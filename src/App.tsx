@@ -1533,9 +1533,32 @@ export default function WeltkochenApp() {
   const visibleRecipes = useMemo(() => filterRecipesForTable(recipeEntries, query, activeCountry), [recipeEntries, query, activeCountry]);
 
   const topRecipeEntry = useMemo(() => {
-    if (!recipeEntries.length) return null;
-    return [...recipeEntries]
-      .sort((a, b) => getRecipeAverage(b[1]) - getRecipeAverage(a[1]))[0] || null;
+    const ratedRecipes = recipeEntries
+      .map(([country, recipe]) => {
+        const ratingValues = Object.values(recipe.ratings || {})
+          .map(Number)
+          .filter((value) => Number.isFinite(value) && value > 0);
+        const average = ratingValues.length
+          ? ratingValues.reduce((sum, value) => sum + value, 0) / ratingValues.length
+          : null;
+
+        return {
+          country,
+          recipe,
+          average,
+          ratingCount: ratingValues.length,
+        };
+      })
+      .filter((entry) => entry.average !== null)
+      .sort((a, b) =>
+        b.average - a.average ||
+        b.ratingCount - a.ratingCount ||
+        a.recipe.dish.localeCompare(b.recipe.dish, "de")
+      );
+
+    if (!ratedRecipes.length) return null;
+    const winner = ratedRecipes[0];
+    return [winner.country, winner.recipe, winner.average, winner.ratingCount];
   }, [recipeEntries]);
 
   const nextCountrySuggestion = useMemo(() => {
@@ -2122,7 +2145,11 @@ export default function WeltkochenApp() {
                         <>
                           <p className="text-sm text-stone-500">{topRecipeEntry[0]}</p>
                           <h4 className="mt-1 text-xl font-black">{topRecipeEntry[1].dish}</h4>
-                          <div className="mt-2 flex items-center gap-2"><RatingStars value={Math.round(getRecipeAverage(topRecipeEntry[1]))} small /><span className="text-sm font-bold">Ø {getRecipeAverage(topRecipeEntry[1])}</span></div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <RatingStars value={Math.round(topRecipeEntry[2])} small />
+                            <span className="text-sm font-bold">Ø {topRecipeEntry[2].toFixed(1)} / 5</span>
+                            <span className="text-xs text-stone-500">({topRecipeEntry[3]} Bewertung{topRecipeEntry[3] === 1 ? "" : "en"})</span>
+                          </div>
                           <Button type="button" onClick={showTopRecipe} className="mt-3 w-full rounded-xl bg-stone-900 text-white">
                             ⭐ Top-Rezept öffnen
                           </Button>
