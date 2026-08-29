@@ -3254,10 +3254,55 @@ export default function WeltkochenApp() {
 
           <div className="flex items-center gap-3">
             <div className="hidden rounded-2xl border border-stone-200 bg-white shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
+            <button
+              type="button"
+              onClick={restartTutorial}
+              className="grid h-11 w-11 place-items-center rounded-2xl border border-stone-300 bg-white text-stone-700 shadow-sm md:hidden"
+              title="Tutorial"
+              aria-label="Tutorial"
+            >
+              <Sparkles className="h-5 w-5" />
+            </button>
             <Button onClick={logout} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-4 py-6 text-stone-800 hover:bg-stone-100">Abmelden</Button>
           </div>
         </div>
       </header>
+
+      <nav className="sticky top-[145px] z-[85] border-b border-stone-200 bg-[#fffaf0] px-2 py-1.5 shadow-sm md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          {[
+            ["karte", "Karte", Globe2],
+            ["details", "Rezept", BookOpen],
+            ["favoriten", "Favoriten", Heart],
+            ["kochplan", "Kochplan", CalendarDays],
+          ].map(([target, label, Icon]) => (
+            <button
+              key={target}
+              type="button"
+              onClick={() => navigateTo(target)}
+              className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black transition ${
+                page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"
+              }`}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setShoppingListOpen(true)}
+            className="relative flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black text-stone-500"
+          >
+            <ShoppingCart className="h-[18px] w-[18px]" />
+            <span>Einkauf</span>
+            {combinedShoppingItems.length > 0 && (
+              <span className="absolute right-1 top-0 grid min-h-4 min-w-4 place-items-center rounded-full bg-stone-900 px-1 text-[9px] text-white">
+                {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </nav>
 
       {storageError && currentUser && (
         <div className="mx-auto mt-4 max-w-7xl px-5">
@@ -4153,48 +4198,6 @@ export default function WeltkochenApp() {
         </div>
       )}
 
-      </div>
-
-      <div className="relative z-[110] h-[86px] shrink-0 overflow-visible border-t border-stone-200 bg-[#fffaf0] md:hidden">
-        <div
-          className="pointer-events-none absolute inset-x-0 -top-16 h-16 bg-[#f7edda]"
-          aria-hidden="true"
-        />
-        <div className="relative h-[86px] overflow-hidden bg-[#fffaf0]">
-        <nav className="h-[86px] bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2">
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-            {[
-              ["karte", "Karte", Globe2],
-              ["details", "Rezept", BookOpen],
-              ["favoriten", "Favoriten", Heart],
-              ["kochplan", "Kochplan", CalendarDays],
-            ].map(([target, label, Icon]) => (
-              <button
-                key={target}
-                type="button"
-                onClick={() => navigateTo(target)}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setShoppingListOpen(true)}
-              className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span>Einkauf</span>
-              {combinedShoppingItems.length > 0 && (
-                <span className="absolute right-2 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-stone-900 px-1 text-[10px] text-white">
-                  {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
-                </span>
-              )}
-            </button>
-          </div>
-        </nav>
-        </div>
       </div>
 
     </div>
