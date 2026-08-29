@@ -4155,49 +4155,41 @@ export default function WeltkochenApp() {
 
       </div>
 
-      <nav className="relative z-[110] shrink-0 border-t border-stone-200 bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(0,0,0,.10)] md:hidden">
-        <div className="absolute -top-12 right-3 flex gap-2">
-          {currentUser.role === "admin" && (
-            <button type="button" onClick={() => navigateTo("admin")} className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-black shadow-lg">
-              Admin
-            </button>
-          )}
-          <button type="button" onClick={restartTutorial} className="grid h-10 w-10 place-items-center rounded-xl border border-stone-200 bg-white shadow-lg" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
-            <Sparkles className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-          {[
-            ["karte", "Karte", Globe2],
-            ["details", "Rezept", BookOpen],
-            ["favoriten", "Favoriten", Heart],
-            ["kochplan", "Kochplan", CalendarDays],
-          ].map(([target, label, Icon]) => (
+      <div className="relative z-[110] h-[86px] shrink-0 overflow-hidden border-t border-stone-200 bg-[#fffaf0] md:hidden">
+        <nav className="h-[86px] bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2">
+          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+            {[
+              ["karte", "Karte", Globe2],
+              ["details", "Rezept", BookOpen],
+              ["favoriten", "Favoriten", Heart],
+              ["kochplan", "Kochplan", CalendarDays],
+            ].map(([target, label, Icon]) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() => navigateTo(target)}
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
             <button
-              key={target}
               type="button"
-              onClick={() => navigateTo(target)}
-              className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
+              onClick={() => setShoppingListOpen(true)}
+              className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
             >
-              <Icon className="h-5 w-5" />
-              <span className="truncate">{label}</span>
+              <ShoppingCart className="h-5 w-5" />
+              <span>Einkauf</span>
+              {combinedShoppingItems.length > 0 && (
+                <span className="absolute right-2 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-stone-900 px-1 text-[10px] text-white">
+                  {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+                </span>
+              )}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setShoppingListOpen(true)}
-            className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
-          >
-            <ShoppingCart className="h-5 w-5" />
-            <span>Einkauf</span>
-            {combinedShoppingItems.length > 0 && (
-              <span className="absolute right-2 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-stone-900 px-1 text-[10px] text-white">
-                {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
+          </div>
+        </nav>
+      </div>
 
     </div>
   );
