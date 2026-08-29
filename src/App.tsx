@@ -824,11 +824,11 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
           zoom={position.zoom}
           center={position.coordinates}
           onMoveEnd={(pos) => {
-            const [lon, lat] = pos.coordinates || position.coordinates;
+            const [, lat] = pos.coordinates || position.coordinates;
             setPosition({
               ...pos,
               coordinates: [
-                Math.max(-145, Math.min(145, lon)),
+                position.coordinates[0],
                 Math.max(-60, Math.min(75, lat)),
               ],
             });
