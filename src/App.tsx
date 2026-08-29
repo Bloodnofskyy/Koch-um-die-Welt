@@ -710,9 +710,16 @@ function AdminPanel({ settings, onUpdateSettings }) {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteMessage, setInviteMessage] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [userActionId, setUserActionId] = useState("");
+  const [userMessage, setUserMessage] = useState("");
+  const [userError, setUserError] = useState("");
+  const [myUserId, setMyUserId] = useState("");
 
   useEffect(() => {
     loadInviteCodes();
+    loadAdminUsers();
   }, []);
 
   async function loadInviteCodes() {
@@ -733,6 +740,51 @@ function AdminPanel({ settings, onUpdateSettings }) {
     }
 
     setInviteLoading(false);
+  }
+
+  async function loadAdminUsers() {
+    if (!supabase) return;
+    setUsersLoading(true);
+    setUserError("");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    setMyUserId(user?.id || "");
+
+    const { data, error } = await supabase
+      .from("weltkochen_profiles")
+      .select("id,email,username,display_name,role,blocked,created_at")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setUserError(error.message);
+      setAdminUsers([]);
+    } else {
+      setAdminUsers(data || []);
+    }
+
+    setUsersLoading(false);
+  }
+
+  async function setUserBlocked(userId, blocked) {
+    if (!supabase || userActionId) return;
+
+    setUserActionId(userId);
+    setUserMessage("");
+    setUserError("");
+
+    const { error } = await supabase.rpc("weltkochen_set_user_blocked", {
+      p_user_id: userId,
+      p_blocked: blocked,
+    });
+
+    if (error) {
+      setUserError(error.message);
+    } else {
+      setUserMessage(blocked ? "Benutzer wurde gesperrt." : "Benutzer wurde entsperrt.");
+      await loadAdminUsers();
+    }
+
+    setUserActionId("");
   }
 
   async function createInviteCode() {
@@ -812,6 +864,104 @@ function AdminPanel({ settings, onUpdateSettings }) {
             >
               Speichern
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h3 className="text-2xl font-black">Benutzerverwaltung</h3>
+                <p className="mt-1 text-sm text-stone-600">
+                  Benutzer sperren oder wieder freigeben.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadAdminUsers}
+                disabled={usersLoading}
+                className="rounded-xl border-stone-300 bg-white"
+              >
+                Aktualisieren
+              </Button>
+            </div>
+
+            {userMessage && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                {userMessage}
+              </div>
+            )}
+
+            {userError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                {userError}
+              </div>
+            )}
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+              {usersLoading ? (
+                <p className="p-4 text-stone-500">Benutzer werden geladen...</p>
+              ) : adminUsers.length ? (
+                <div className="divide-y divide-stone-200">
+                  {adminUsers.map((user) => {
+                    const isMe = user.id === myUserId;
+                    const isBlocked = Boolean(user.blocked);
+                    return (
+                      <div key={user.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black">{user.display_name || user.username || "Benutzer"}</span>
+                            <span className={`rounded-full px-2 py-1 text-xs font-bold ${
+                              isBlocked
+                                ? "bg-red-100 text-red-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            }`}>
+                              {isBlocked ? "Gesperrt" : "Aktiv"}
+                            </span>
+                            {user.role === "admin" && (
+                              <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">
+                                Admin
+                              </span>
+                            )}
+                            {isMe && (
+                              <span className="rounded-full bg-stone-100 px-2 py-1 text-xs font-bold text-stone-600">
+                                Du
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 break-all text-sm text-stone-500">
+                            @{user.username || "—"} · {user.email || "Keine E-Mail"}
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant={isBlocked ? "outline" : "destructive"}
+                          disabled={isMe || userActionId === user.id}
+                          onClick={() => setUserBlocked(user.id, !isBlocked)}
+                          className={`rounded-xl ${
+                            isBlocked
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                              : ""
+                          }`}
+                        >
+                          {userActionId === user.id
+                            ? "Bitte warten..."
+                            : isMe
+                              ? "Eigenes Konto"
+                              : isBlocked
+                                ? "Entsperren"
+                                : "Sperren"}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="p-4 text-stone-500">Keine Benutzer gefunden.</p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
