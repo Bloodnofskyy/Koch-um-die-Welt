@@ -43,9 +43,10 @@ select {
 
   body {
     overflow-x: hidden;
-    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
   }
 
+  /* Eingaben auf dem Smartphone größer und ohne iPhone-Autozoom */
   input,
   textarea,
   select {
@@ -53,28 +54,27 @@ select {
     font-size: 16px !important;
   }
 
+  textarea {
+    min-height: 130px;
+  }
+
   button {
     min-height: 44px;
     touch-action: manipulation;
-    white-space: normal;
   }
 
+  /* Kopfbereich kompakter */
   header {
-    min-height: 64px;
-    padding: 8px 12px !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    padding: 10px 12px !important;
   }
 
   header > div {
     gap: 10px !important;
-    align-items: center !important;
   }
 
   header h1 {
-    font-size: 1.05rem !important;
+    font-size: 1.15rem !important;
     line-height: 1.2 !important;
-    letter-spacing: .01em;
   }
 
   header p {
@@ -91,6 +91,7 @@ select {
     height: 24px !important;
   }
 
+  /* Benutzer + Abmelden oben sauber nebeneinander */
   header > div > div:last-child {
     width: 100%;
     justify-content: space-between;
@@ -110,16 +111,13 @@ select {
     padding: 8px 14px !important;
   }
 
+  /* Mobile Bottom-Navigation */
   header nav {
-    position: fixed !important;
-    z-index: 9999 !important;
-    top: auto !important;
-    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
-    left: 8px !important;
-    right: 8px !important;
-    width: auto !important;
-    margin: 0 !important;
-    transform: none !important;
+    position: fixed;
+    z-index: 50;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
     display: grid !important;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
@@ -157,53 +155,54 @@ select {
     height: 20px !important;
   }
 
+  /* Seitenränder und Abstände */
   main {
     padding-left: 12px !important;
     padding-right: 12px !important;
     padding-top: 16px !important;
-    padding-bottom: 24px !important;
+    padding-bottom: 18px !important;
   }
 
+  /* Weltkarte auf Handydisplay sinnvoll groß */
   .h-\[760px\] {
-    height: 330px !important;
+    height: 410px !important;
   }
 
   .absolute.left-8.top-8 {
     left: 10px !important;
     top: 10px !important;
-    max-width: 165px !important;
-    padding: 8px 9px !important;
+    max-width: calc(100% - 20px);
+    padding: 10px 12px !important;
     border-radius: 16px !important;
   }
 
   .absolute.left-8.top-8 h2 {
-    font-size: 1rem !important;
+    font-size: 1.25rem !important;
   }
 
   .absolute.left-8.top-8 p {
     margin-top: 4px !important;
-    font-size: 9px !important;
-    line-height: 1.25 !important;
+    font-size: 11px !important;
   }
 
   .absolute.bottom-6.left-6 {
     left: 10px !important;
     bottom: 10px !important;
-    gap: 5px !important;
-    padding: 5px !important;
-    border-radius: 15px !important;
+    padding: 6px !important;
   }
 
   .absolute.bottom-6.left-6 button {
-    min-width: 40px !important;
-    min-height: 38px !important;
-    padding: 4px 8px !important;
+    min-width: 44px;
+    min-height: 40px;
+    padding: 5px 10px !important;
   }
 
+  /* Große runde Karten etwas kompakter */
   .rounded-\[2rem\] {
     border-radius: 22px !important;
   }
 
+  /* Rezeptlisten: horizontales Abschneiden verhindern */
   [class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"] {
     grid-template-columns: 1fr !important;
     gap: 7px !important;
@@ -217,15 +216,18 @@ select {
     display: none;
   }
 
+  /* Tabellenkopf der Rezeptliste auf Mobile ausblenden */
   div[class*="grid-cols-\[1fr_1\.3fr_1fr_36px\]"][class*="font-black"] {
     display: none !important;
   }
 
+  /* Bilder in Rezeptlisten nicht zu breit */
   img {
     max-width: 100%;
     height: auto;
   }
 
+  /* Modal als mobiles Bottom-Sheet */
   .fixed.inset-0 {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -245,10 +247,12 @@ select {
     line-height: 1.15 !important;
   }
 
+  /* Admin */
   .max-w-4xl {
     max-width: 100% !important;
   }
 
+  /* Login/Registrierung */
   .min-h-screen.px-5.py-10 {
     padding: 18px 12px !important;
   }
@@ -258,6 +262,165 @@ select {
     line-height: 1 !important;
   }
 
+  /* Buttons mit Text dürfen auf kleinen Displays umbrechen */
+  button {
+    white-space: normal;
+  }
+}
+
+
+/* ===== Mobile Feinschliff v2 ===== */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Logozeile kompakt halten */
+  header {
+    min-height: 64px;
+    padding: 8px 12px !important;
+  }
+
+  header > div {
+    align-items: center !important;
+  }
+
+  header h1 {
+    font-size: 1.05rem !important;
+    letter-spacing: .01em;
+  }
+
+  /* Navigation wirklich unten statt im oberen Header */
+  header nav {
+    top: auto !important;
+    bottom: calc(7px + env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  /* Karte kompakter */
+  .h-\[760px\] {
+    height: 355px !important;
+  }
+
+  /* Länderbox auf Karte kleiner */
+  .absolute.left-8.top-8 {
+    max-width: 190px !important;
+    padding: 9px 11px !important;
+  }
+
+  .absolute.left-8.top-8 h2 {
+    font-size: 1.12rem !important;
+  }
+
+  .absolute.left-8.top-8 p {
+    font-size: 10px !important;
+  }
+
+  /* Zoomsteuerung kleiner */
+  .absolute.bottom-6.left-6 {
+    gap: 5px !important;
+    padding: 5px !important;
+    border-radius: 15px !important;
+  }
+
+  .absolute.bottom-6.left-6 button {
+    min-width: 40px !important;
+    min-height: 38px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* Statistikbereich auf Mobile kompakter */
+  main .grid.grid-cols-1.md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  main .grid.grid-cols-1.md\:grid-cols-3 > * {
+    min-width: 0;
+  }
+
+  main .grid.grid-cols-1.md\:grid-cols-3 [class*="p-6"],
+  main .grid.grid-cols-1.md\:grid-cols-3 [class*="p-5"],
+  main .grid.grid-cols-1.md\:grid-cols-3 [class*="p-4"] {
+    padding: 10px 7px !important;
+  }
+
+  main .grid.grid-cols-1.md\:grid-cols-3 svg {
+    width: 27px !important;
+    height: 27px !important;
+  }
+
+  main .grid.grid-cols-1.md\:grid-cols-3 p,
+  main .grid.grid-cols-1.md\:grid-cols-3 span {
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  main .grid.grid-cols-1.md\:grid-cols-3 h2,
+  main .grid.grid-cols-1.md\:grid-cols-3 h3,
+  main .grid.grid-cols-1.md\:grid-cols-3 strong,
+  main .grid.grid-cols-1.md\:grid-cols-3 .text-4xl,
+  main .grid.grid-cols-1.md\:grid-cols-3 .text-3xl {
+    font-size: 1.15rem !important;
+    line-height: 1.05 !important;
+  }
+
+  /* Abstände zwischen Karte, Statistik und Suche reduzieren */
+  main > div,
+  main > section {
+    scroll-margin-top: 10px;
+  }
+
+  main .mt-8 {
+    margin-top: 14px !important;
+  }
+
+  main .mt-6 {
+    margin-top: 12px !important;
+  }
+
+  main .gap-6 {
+    gap: 12px !important;
+  }
+
+  /* Suchfeld */
+  input[placeholder*="Land, Rezept"] {
+    min-height: 50px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  /* Safari-Browserleiste soll keine wichtigen Bedienelemente verdecken */
+  main {
+    padding-bottom: 24px !important;
+  }
+}
+
+
+/* ===== Mobile Feinschliff v3 ===== */
+@media (max-width: 767px) {
+  /* Wichtig: backdrop-filter am Header erzeugt auf iOS einen eigenen
+     Bezugspunkt für position: fixed. Dadurch hing die Nav oben fest. */
+  header {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  header nav {
+    position: fixed !important;
+    top: auto !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    z-index: 9999 !important;
+  }
+
+  /* Der Statistikblock aus App.tsx:
+     <div class="grid gap-4 ... md:grid-cols-3"> */
   main section > div.grid.gap-4.rounded-3xl {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -295,7 +458,32 @@ select {
     white-space: nowrap !important;
   }
 
-  main section.space-y-5,
+  /* Karte noch etwas flacher – auf dem Handy reicht das völlig */
+  .h-\[760px\] {
+    height: 330px !important;
+  }
+
+  /* Infobox über der Karte weniger dominant */
+  .absolute.left-8.top-8 {
+    max-width: 165px !important;
+    padding: 8px 9px !important;
+  }
+
+  .absolute.left-8.top-8 h2 {
+    font-size: 1rem !important;
+  }
+
+  .absolute.left-8.top-8 p {
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Abstand zwischen den Hauptblöcken kleiner */
+  main section.space-y-5 {
+    gap: 12px !important;
+  }
+
+  /* Suchfeld + Kontinent-Auswahl enger */
   aside.space-y-5 {
     gap: 12px !important;
   }
@@ -303,15 +491,16 @@ select {
   aside > div.grid.gap-3 {
     gap: 8px !important;
   }
+}
 
-  input[placeholder*="Land, Rezept"] {
-    min-height: 50px !important;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+
+/* ===== Mobile Rezeptformular Feinschliff v4 ===== */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
   }
 
-  /* Rezeptformular mobil kompakter */
-  #recipe-entry-card > div > div {
+  #recipe-entry-card .p-6 {
     padding: 16px !important;
   }
 
@@ -321,35 +510,22 @@ select {
 
   #recipe-entry-card label > span {
     margin-bottom: 5px !important;
-    font-size: 13px !important;
-  }
-
-  #recipe-entry-card input:not([type="file"]),
-  #recipe-entry-card select {
-    min-height: 48px !important;
-    padding: 10px 12px !important;
-  }
-
-  #recipe-entry-card input[type="file"] {
-    min-height: 52px !important;
-    padding: 7px !important;
+    font-size: 14px !important;
   }
 
   #recipe-entry-card textarea[rows="7"] {
     min-height: 150px !important;
     height: 150px !important;
-    padding: 12px !important;
   }
 
   #recipe-entry-card textarea[rows="4"] {
-    min-height: 96px !important;
-    height: 96px !important;
-    padding: 12px !important;
+    min-height: 105px !important;
+    height: 105px !important;
   }
 
   #recipe-entry-card .rounded-2xl.border.border-stone-200.bg-white.p-3.text-sm {
     padding: 10px 12px !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     line-height: 1.3 !important;
   }
 
@@ -362,36 +538,82 @@ select {
   #recipe-entry-card .flex.flex-wrap.gap-3 > button {
     width: 100% !important;
     min-width: 0 !important;
-    min-height: 52px !important;
-    padding: 10px 8px !important;
-    font-size: 13px !important;
+    min-height: 54px !important;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
     line-height: 1.15 !important;
   }
 
   #recipe-entry-card .flex.flex-wrap.gap-3 > button svg {
+    margin-right: 6px !important;
     width: 17px !important;
     height: 17px !important;
-    margin-right: 5px !important;
   }
 
   #recipe-entry-card .mt-6.rounded-2xl {
-    margin-top: 14px !important;
+    margin-top: 16px !important;
     padding: 12px !important;
   }
 
   #recipe-entry-card .mt-6.rounded-2xl h3 {
-    margin-bottom: 8px !important;
+    margin-bottom: 10px !important;
+    font-size: 1.05rem !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 {
+    gap: 8px !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button {
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button > img {
+    height: 105px !important;
+    margin-bottom: 9px !important;
+    border-radius: 13px !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button p.font-bold {
     font-size: 1rem !important;
+    line-height: 1.15 !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button p.text-xs {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button button {
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    border-radius: 11px !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button .mt-2.flex {
+    margin-top: 7px !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  #recipe-entry-card .mt-6.rounded-2xl .space-y-3 > button .mt-2.flex button {
+    min-height: 30px !important;
+    padding: 0 !important;
+  }
+
+  #recipe-entry-card input[type="file"] {
+    min-height: 50px !important;
+    padding: 8px 10px !important;
+  }
+
+  header nav {
+    bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+    box-shadow: 0 8px 24px rgba(41, 37, 36, 0.16) !important;
   }
 
   #recipe-entry-card {
-    padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
-    scroll-margin-top: 12px !important;
-  }
-}
-
-@media (max-width: 390px) {
-  #recipe-entry-card .flex.flex-wrap.gap-3 {
-    grid-template-columns: 1fr !important;
+    padding-bottom: 36px !important;
   }
 }
