@@ -811,7 +811,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
   );
 }
 
-function RecipeModal({ openedRecipe, currentUser, setRating, onClose }) {
+function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, onDelete }) {
   const [viewServings, setViewServings] = useState(Number(openedRecipe?.servings) || 4);
 
   useEffect(() => {
@@ -834,7 +834,15 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose }) {
             {openedRecipe.image && <img src={openedRecipe.image} alt={openedRecipe.dish} className="mt-4 max-h-72 w-full rounded-2xl object-cover" />}
             <p className="mt-1 text-stone-500">{openedRecipe.category || "Hauptgericht"} · erstellt von {openedRecipe.createdByName || openedRecipe.createdBy}</p>
           </div>
-          <Button onClick={onClose} variant="outline" className="rounded-2xl border-stone-300 bg-white hover:bg-stone-100">Schließen</Button>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            <Button type="button" onClick={() => onEdit?.(openedRecipe)} className="rounded-2xl bg-stone-900 text-white">
+              Bearbeiten
+            </Button>
+            <Button type="button" onClick={() => onDelete?.(openedRecipe)} variant="outline" className="rounded-2xl border-red-300 bg-red-50 text-red-700 hover:bg-red-100">
+              <Trash2 className="mr-2 h-4 w-4" /> Löschen
+            </Button>
+            <Button onClick={onClose} variant="outline" className="rounded-2xl border-stone-300 bg-white hover:bg-stone-100">Schließen</Button>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-[1fr_.7fr]">
@@ -1438,6 +1446,7 @@ export default function WeltkochenApp() {
   const [deleteChallenge, setDeleteChallenge] = useState(null);
   const [deleteChallengeAnswer, setDeleteChallengeAnswer] = useState("");
   const [deleteChallengeError, setDeleteChallengeError] = useState("");
+  const [deleteTargetRecipe, setDeleteTargetRecipe] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1723,44 +1732,76 @@ export default function WeltkochenApp() {
       .replace(/[\u0300-\u036f]/g, "");
   }
 
-  function startDeleteRecipeChallenge() {
-    if (!editingRecipeId) {
-      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-      setImageError("");
+  function startDeleteRecipeChallenge(recipe = null) {
+    let target = recipe;
+    if (!target && editingRecipeId) {
+      target = (Array.isArray(recipes[selected]) ? recipes[selected] : []).find((item) => item.id === editingRecipeId) || {
+        id: editingRecipeId,
+        country: selected,
+        dish: form.dish || "Rezept",
+      };
+    }
+
+    if (!target?.id) {
+      clearRecipe();
       return;
     }
+
     const puzzle = deletePuzzles[Math.floor(Math.random() * deletePuzzles.length)];
+    setDeleteTargetRecipe({
+      id: target.id,
+      country: target.country || selected,
+      dish: target.dish || "Rezept",
+    });
     setDeleteChallenge(puzzle);
     setDeleteChallengeAnswer("");
     setDeleteChallengeError("");
   }
 
   async function confirmDeleteRecipeChallenge() {
-    if (!deleteChallenge) return;
+    if (!deleteChallenge || !deleteTargetRecipe?.id) return;
+
     const correct = normalizePuzzleAnswer(deleteChallengeAnswer) === normalizePuzzleAnswer(deleteChallenge.answer);
     if (!correct) {
       setDeleteChallengeError("Noch nicht richtig. Versuch es nochmal.");
       return;
     }
-    setDeleteChallenge(null);
-    setDeleteChallengeAnswer("");
-    setDeleteChallengeError("");
-    await clearRecipe();
+
+    try {
+      const { error } = await supabase.from("weltkochen_recipes").delete().eq("id", deleteTargetRecipe.id);
+      if (error) throw error;
+
+      const content = await loadNormalizedContent();
+      setRecipes(content.recipes);
+      setSuggestions(content.suggestions);
+
+      if (openedRecipe?.id === deleteTargetRecipe.id) setOpenedRecipe(null);
+      if (editingRecipeId === deleteTargetRecipe.id) {
+        setEditingRecipeId(null);
+        setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+        setImageError("");
+      }
+
+      setDeleteChallenge(null);
+      setDeleteTargetRecipe(null);
+      setDeleteChallengeAnswer("");
+      setDeleteChallengeError("");
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gelöscht werden.");
+    }
   }
 
-  async function clearRecipe() {
-    if (!editingRecipeId) {
-      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-      setImageError(""); return;
-    }
-    try {
-      const { error } = await supabase.from("weltkochen_recipes").delete().eq("id", editingRecipeId);
-      if (error) throw error;
-      const content = await loadNormalizedContent();
-      setRecipes(content.recipes); setSuggestions(content.suggestions);
-      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-      setImageError(""); setEditingRecipeId(null);
-    } catch (error) { setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gelöscht werden."); }
+  function cancelDeleteRecipeChallenge() {
+    setDeleteChallenge(null);
+    setDeleteTargetRecipe(null);
+    setDeleteChallengeAnswer("");
+    setDeleteChallengeError("");
+  }
+
+  function clearRecipe() {
+    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+    setImageError("");
+    setEditingRecipeId(null);
   }
 
   async function setRating(country, recipeId, rating) {
@@ -1791,6 +1832,15 @@ export default function WeltkochenApp() {
     });
     setImageError("");
     setPage("details");
+  }
+
+  function editRecipeFromModal(recipe) {
+    if (recipe?.country) setSelected(recipe.country);
+    setOpenedRecipe(null);
+    editRecipe(recipe);
+    window.setTimeout(() => {
+      document.getElementById("recipe-entry-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   }
 
   async function addSuggestion() {
@@ -2152,7 +2202,7 @@ export default function WeltkochenApp() {
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Zubereitung</span><textarea value={form.recipe} onChange={(event) => setForm({ ...form, recipe: event.target.value })} placeholder="Zubereitungsschritte eintragen..." rows={7} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
                     <div className="rounded-2xl border border-stone-200 bg-white p-3 text-sm text-stone-600">{editingRecipeId ? "Du bearbeitest ein bestehendes Rezept." : `Neues Rezept wird als erstellt von ${currentUser.displayName} gespeichert.`}</div>
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Notizen</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Wer hat gekocht? Was würdet ihr ändern?" rows={4} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
-                    <div className="flex flex-wrap gap-3"><Button onClick={saveRecipe} className="rounded-2xl bg-amber-400 px-5 py-6 text-stone-950 hover:bg-amber-300"><Plus className="mr-2 h-4 w-4" /> {editingRecipeId ? "Änderungen speichern" : "Neues Rezept speichern"}</Button><Button onClick={editingRecipeId ? startDeleteRecipeChallenge : clearRecipe} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-5 py-6 text-stone-800 hover:bg-stone-100"><Trash2 className="mr-2 h-4 w-4" /> {editingRecipeId ? "Rezept löschen" : "Zurücksetzen"}</Button></div>
+                    <div className="flex flex-wrap gap-3"><Button onClick={saveRecipe} className="rounded-2xl bg-amber-400 px-5 py-6 text-stone-950 hover:bg-amber-300"><Plus className="mr-2 h-4 w-4" /> {editingRecipeId ? "Änderungen speichern" : "Neues Rezept speichern"}</Button><Button onClick={editingRecipeId ? () => startDeleteRecipeChallenge() : clearRecipe} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-5 py-6 text-stone-800 hover:bg-stone-100"><Trash2 className="mr-2 h-4 w-4" /> {editingRecipeId ? "Rezept löschen" : "Zurücksetzen"}</Button></div>
                   </div>
 
                   <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-4">
@@ -2182,10 +2232,11 @@ export default function WeltkochenApp() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Sicherheitsfrage</p>
                 <h2 className="mt-1 text-2xl font-black">Rezept wirklich löschen?</h2>
+                {deleteTargetRecipe?.dish && <p className="mt-1 font-semibold text-stone-600">{deleteTargetRecipe.dish}</p>}
               </div>
               <button
                 type="button"
-                onClick={() => { setDeleteChallenge(null); setDeleteChallengeAnswer(""); setDeleteChallengeError(""); }}
+                onClick={cancelDeleteRecipeChallenge}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-stone-300 bg-white"
                 aria-label="Abbrechen"
               >
@@ -2221,7 +2272,7 @@ export default function WeltkochenApp() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setDeleteChallenge(null); setDeleteChallengeAnswer(""); setDeleteChallengeError(""); }}
+                onClick={cancelDeleteRecipeChallenge}
                 className="rounded-xl border-stone-300 bg-white"
               >
                 Abbrechen
@@ -2310,7 +2361,14 @@ export default function WeltkochenApp() {
           </div>
         </div>
       )}
-      <RecipeModal openedRecipe={openedRecipe} currentUser={currentUser} setRating={setRating} onClose={closeRecipe} />
+      <RecipeModal
+        openedRecipe={openedRecipe}
+        currentUser={currentUser}
+        setRating={setRating}
+        onClose={closeRecipe}
+        onEdit={editRecipeFromModal}
+        onDelete={startDeleteRecipeChallenge}
+      />
     </div>
   );
 }
