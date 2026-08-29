@@ -833,6 +833,7 @@ function AdminPanel({ settings, onUpdateSettings }) {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteMessage, setInviteMessage] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [inviteActionCode, setInviteActionCode] = useState("");
   const [adminUsers, setAdminUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [userActionId, setUserActionId] = useState("");
@@ -853,6 +854,7 @@ function AdminPanel({ settings, onUpdateSettings }) {
     const { data, error } = await supabase
       .from("weltkochen_invite_codes")
       .select("*")
+      .is("used_by", null)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -927,6 +929,28 @@ function AdminPanel({ settings, onUpdateSettings }) {
     }
 
     setInviteBusy(false);
+  }
+
+  async function setInviteCodeActive(code, active) {
+    if (!supabase || inviteActionCode) return;
+
+    setInviteActionCode(code);
+    setInviteMessage("");
+    setInviteError("");
+
+    const { error } = await supabase.rpc("weltkochen_set_invite_code_active", {
+      p_code: code,
+      p_active: active,
+    });
+
+    if (error) {
+      setInviteError(error.message);
+    } else {
+      setInviteMessage(active ? `${code} wurde freigegeben.` : `${code} wurde gesperrt.`);
+      await loadInviteCodes();
+    }
+
+    setInviteActionCode("");
   }
 
   async function copyInviteCode(code) {
@@ -1126,39 +1150,67 @@ function AdminPanel({ settings, onUpdateSettings }) {
               ) : inviteCodes.length ? (
                 <div className="divide-y divide-stone-200">
                   {inviteCodes.map((invite) => {
-                    const used = Boolean(invite.used_by || invite.used_at);
+                    const active = invite.active !== false;
                     return (
                       <div
                         key={invite.code}
                         className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div>
-                          <div className="font-mono text-lg font-black">{invite.code}</div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-mono text-lg font-black">{invite.code}</div>
+                            <span className={`rounded-full px-2 py-1 text-xs font-bold ${
+                              active
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {active ? "Aktiv" : "Gesperrt"}
+                            </span>
+                          </div>
                           <div className="mt-1 text-sm text-stone-500">
-                            {used ? "Benutzt" : "Frei"}
                             {invite.created_at
-                              ? ` · erstellt ${new Date(invite.created_at).toLocaleDateString("de-DE")}`
+                              ? `Erstellt ${new Date(invite.created_at).toLocaleDateString("de-DE")}`
                               : ""}
                           </div>
                         </div>
 
-                        {!used && (
+                        <div className="flex flex-wrap gap-2">
+                          {active && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => copyInviteCode(invite.code)}
+                              className="rounded-xl border-stone-300 bg-white"
+                            >
+                              Kopieren
+                            </Button>
+                          )}
+
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => copyInviteCode(invite.code)}
-                            className="rounded-xl border-stone-300 bg-white"
+                            disabled={inviteActionCode === invite.code}
+                            onClick={() => setInviteCodeActive(invite.code, !active)}
+                            className={`rounded-xl ${
+                              active
+                                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                                : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                            }`}
                           >
-                            Kopieren
+                            {inviteActionCode === invite.code
+                              ? "Bitte warten..."
+                              : active
+                                ? "Sperren"
+                                : "Entsperren"}
                           </Button>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
                 <p className="p-4 text-stone-500">
-                  Noch keine Einladungscodes vorhanden.
+                  Keine freien Einladungscodes vorhanden.
                 </p>
               )}
             </div>
