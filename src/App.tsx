@@ -201,7 +201,7 @@ async function saveCloudState(state) {
 
 async function loadNormalizedContent() {
   const [{ data: recipeRows, error: recipeError }, { data: ingredientRows, error: ingredientError }, { data: ratingRows, error: ratingError }, { data: suggestionRows, error: suggestionError }] = await Promise.all([
-    supabase.from("weltkochen_recipes").select("*").order("created_at", { ascending: true }),
+    supabase.from("weltkochen_recipes").select("*").is("deleted_at", null).order("created_at", { ascending: true }),
     supabase.from("weltkochen_ingredients").select("*").order("position", { ascending: true }),
     supabase.from("weltkochen_ratings").select("recipe_id,user_id,rating"),
     supabase.from("weltkochen_suggestions").select("id,country,suggestion,creator_id,created_at").order("created_at", { ascending: true }),
@@ -976,7 +976,7 @@ function RegionCountryPicker({ regionRows, collapsedRegions, toggleRegion, recip
   );
 }
 
-function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
+function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged }) {
   const [requiredRecipes, setRequiredRecipes] = useState(String(settings.requiredRecipesPerCountry));
   const [minAverageRating, setMinAverageRating] = useState(String(settings.minAverageRatingForCompletion));
   const [inviteCodes, setInviteCodes] = useState([]);
@@ -991,10 +991,16 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
   const [userMessage, setUserMessage] = useState("");
   const [userError, setUserError] = useState("");
   const [myUserId, setMyUserId] = useState("");
+  const [deletedRecipes, setDeletedRecipes] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(true);
+  const [trashActionId, setTrashActionId] = useState("");
+  const [trashMessage, setTrashMessage] = useState("");
+  const [trashError, setTrashError] = useState("");
 
   useEffect(() => {
     loadInviteCodes();
     loadAdminUsers();
+    loadDeletedRecipes();
   }, []);
 
   async function loadInviteCodes() {
@@ -1091,6 +1097,96 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
     setUserActionId("");
   }
 
+  async function loadDeletedRecipes() {
+    if (!supabase) return;
+    setTrashLoading(true);
+    setTrashError("");
+
+    const { data, error } = await supabase
+      .from("weltkochen_recipes")
+      .select("id,country,dish,creator_id,creator_username,creator_name,deleted_at,deleted_by")
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+
+    if (error) {
+      setDeletedRecipes([]);
+      setTrashError(error.message);
+      setTrashLoading(false);
+      return;
+    }
+
+    const deleterIds = [...new Set((data || []).map((recipe) => recipe.deleted_by).filter(Boolean))];
+    let deleters = {};
+
+    if (deleterIds.length) {
+      const { data: profiles, error: profileError } = await supabase
+        .from("weltkochen_profiles")
+        .select("id,username,display_name")
+        .in("id", deleterIds);
+
+      if (!profileError) {
+        deleters = Object.fromEntries((profiles || []).map((profile) => [
+          profile.id,
+          profile.display_name || profile.username || "Benutzer",
+        ]));
+      }
+    }
+
+    setDeletedRecipes((data || []).map((recipe) => ({
+      ...recipe,
+      deletedByName: deleters[recipe.deleted_by] || "Unbekannt",
+    })));
+    setTrashLoading(false);
+  }
+
+  async function restoreDeletedRecipe(recipe) {
+    if (!recipe?.id || trashActionId) return;
+    setTrashActionId(recipe.id);
+    setTrashMessage("");
+    setTrashError("");
+
+    const { error } = await supabase.rpc("weltkochen_restore_recipe", {
+      p_recipe_id: recipe.id,
+    });
+
+    if (error) {
+      setTrashError(error.message);
+    } else {
+      setTrashMessage(`„${recipe.dish}“ wurde wiederhergestellt.`);
+      await loadDeletedRecipes();
+      await onTrashChanged?.();
+    }
+
+    setTrashActionId("");
+  }
+
+  async function finalDeleteRecipe(recipe) {
+    if (!recipe?.id || trashActionId) return;
+
+    const confirmed = window.confirm(
+      `„${recipe.dish}“ endgültig löschen?\n\nDanach kann das Rezept nicht mehr wiederhergestellt werden.`
+    );
+    if (!confirmed) return;
+
+    setTrashActionId(recipe.id);
+    setTrashMessage("");
+    setTrashError("");
+
+    const { error } = await supabase.rpc("weltkochen_final_delete_recipe", {
+      p_recipe_id: recipe.id,
+    });
+
+    if (error) {
+      setTrashError(error.message);
+    } else {
+      setTrashMessage(`„${recipe.dish}“ wurde endgültig gelöscht.`);
+      await loadDeletedRecipes();
+      await onTrashChanged?.();
+    }
+
+    setTrashActionId("");
+  }
+
   async function createInviteCode() {
     if (!supabase || inviteBusy) return;
 
@@ -1162,6 +1258,85 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
             <Button type="button" onClick={onExportBackup} className="rounded-xl bg-stone-900 text-white">
               Backup herunterladen
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h3 className="text-2xl font-black">Gelöschte Rezepte</h3>
+                <p className="mt-1 text-sm text-stone-600">
+                  Nutzerlöschungen landen zuerst hier. Du kannst sie wiederherstellen oder endgültig löschen.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadDeletedRecipes}
+                disabled={trashLoading}
+                className="rounded-xl border-stone-300 bg-white"
+              >
+                Aktualisieren
+              </Button>
+            </div>
+
+            {trashMessage && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                {trashMessage}
+              </div>
+            )}
+
+            {trashError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                {trashError}
+              </div>
+            )}
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+              {trashLoading ? (
+                <p className="p-4 text-stone-500">Papierkorb wird geladen...</p>
+              ) : deletedRecipes.length ? (
+                <div className="divide-y divide-stone-200">
+                  {deletedRecipes.map((recipe) => (
+                    <div key={recipe.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="font-black">{recipe.dish}</div>
+                        <div className="mt-1 text-sm text-stone-500">
+                          {recipe.country} · erstellt von {recipe.creator_name || recipe.creator_username || "Unbekannt"}
+                        </div>
+                        <div className="mt-1 text-xs text-stone-500">
+                          Gelöscht von {recipe.deletedByName} · {recipe.deleted_at ? new Date(recipe.deleted_at).toLocaleString("de-DE") : "—"}
+                        </div>
+                      </div>
+
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={trashActionId === recipe.id}
+                          onClick={() => restoreDeletedRecipe(recipe)}
+                          className="w-full rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:w-auto"
+                        >
+                          {trashActionId === recipe.id ? "Bitte warten..." : "Wiederherstellen"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={trashActionId === recipe.id}
+                          onClick={() => finalDeleteRecipe(recipe)}
+                          className="w-full rounded-xl border-red-300 bg-red-50 text-red-700 hover:bg-red-100 sm:w-auto"
+                        >
+                          Endgültig löschen
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="p-4 text-stone-500">Der Papierkorb ist leer.</p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -1837,10 +2012,9 @@ export default function WeltkochenApp() {
     }
 
     try {
-      const { error } = await supabase
-        .from("weltkochen_recipes")
-        .delete()
-        .eq("id", target.id);
+      const { data: deleteResult, error } = await supabase.rpc("weltkochen_soft_delete_recipe", {
+        p_recipe_id: target.id,
+      });
 
       if (error) throw error;
 
@@ -1865,7 +2039,12 @@ export default function WeltkochenApp() {
         setImageError("");
       }
 
-      window.alert("Rezept wurde gelöscht.");
+      const remaining = deleteResult?.remainingToday;
+      window.alert(
+        remaining === null || remaining === undefined
+          ? "Rezept wurde in den Admin-Papierkorb verschoben."
+          : `Rezept wurde in den Admin-Papierkorb verschoben. Du kannst heute noch ${remaining} Rezept${remaining === 1 ? "" : "e"} löschen.`
+      );
     } catch (error) {
       setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gelöscht werden.");
     }
@@ -2028,7 +2207,16 @@ export default function WeltkochenApp() {
       </header>
 
       {page === "admin" && currentUser.role === "admin" ? (
-        <AdminPanel settings={settings} onUpdateSettings={updateSettings} onExportBackup={exportBackup} />
+        <AdminPanel
+          settings={settings}
+          onUpdateSettings={updateSettings}
+          onExportBackup={exportBackup}
+          onTrashChanged={async () => {
+            const content = await loadNormalizedContent();
+            setRecipes(content.recipes);
+            setSuggestions(content.suggestions);
+          }}
+        />
       ) : page === "karte" ? (
         <main className="mx-auto grid max-w-[1600px] gap-6 px-5 py-8 lg:grid-cols-[1.65fr_.85fr]">
           <section className="space-y-5">
