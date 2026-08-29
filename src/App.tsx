@@ -120,6 +120,7 @@ const countryZooms = {
   "Vereinigte Staaten": { center: [-98, 39], zoom: 2.5 },
   Kanada: { center: [-106, 57], zoom: 2.4 },
   Mexiko: { center: [-102, 23], zoom: 3.2 },
+  Bahamas: { center: [-76.5, 24.3], zoom: 6.2 },
   Brasilien: { center: [-53, -10], zoom: 2.5 },
   Argentinien: { center: [-64, -35], zoom: 2.8 },
   Russland: { center: [90, 60], zoom: 1.8 },
@@ -711,7 +712,7 @@ function AuthScreen({ onLogin, storageError }) {
   );
 }
 
-function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggestions, selectedRegion, requiredRecipes, minAverageRating }) {
+function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggestions, selectedRegion, requiredRecipes, minAverageRating, focusCountry }) {
   const [position, setPosition] = useState({ coordinates: [10, 20], zoom: 1 });
 
   const regionZooms = {
@@ -729,6 +730,12 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
     const config = regionZooms[selectedRegion] || regionZooms["Alle Kontinente"];
     setPosition({ coordinates: config.center, zoom: config.zoom });
   }, [selectedRegion]);
+
+  useEffect(() => {
+    if (!focusCountry) return;
+    const config = countryZooms[focusCountry];
+    if (config) setPosition({ coordinates: config.center, zoom: config.zoom });
+  }, [focusCountry]);
 
   function changeZoom(delta) {
     setPosition((pos) => ({ ...pos, zoom: Math.min(8, Math.max(0.9, pos.zoom + delta)) }));
@@ -1372,6 +1379,7 @@ export default function WeltkochenApp() {
   const [selected, setSelected] = useState("Italien");
   const [hovered, setHovered] = useState("");
   const [query, setQuery] = useState("");
+  const [focusCountry, setFocusCountry] = useState("");
   const [form, setForm] = useState({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
   const [suggestionText, setSuggestionText] = useState("");
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
@@ -1433,7 +1441,29 @@ export default function WeltkochenApp() {
     const average = getRecipeAverage(recipe);
     return sum + (average === "–" ? 0 : Number(average));
   }, 0) / recipeEntries.length).toFixed(1) : "0.0";
-  const filteredCountries = useMemo(() => countries.filter((country) => country.toLowerCase().includes(query.toLowerCase())), [query]);
+  const filteredCountries = useMemo(() => {
+    const clean = query.trim().toLocaleLowerCase("de-DE");
+    if (!clean) return countries;
+    return countries
+      .filter((country) => country.toLocaleLowerCase("de-DE").includes(clean))
+      .sort((a, b) => {
+        const aName = a.toLocaleLowerCase("de-DE");
+        const bName = b.toLocaleLowerCase("de-DE");
+        const aStarts = aName.startsWith(clean) ? 0 : 1;
+        const bStarts = bName.startsWith(clean) ? 0 : 1;
+        return aStarts - bStarts || a.localeCompare(b, "de");
+      });
+  }, [query]);
+
+  function chooseCountryFromSearch(country, jumpToForm = false) {
+    setSelected(country);
+    setFocusCountry("");
+    window.setTimeout(() => setFocusCountry(country), 0);
+    setQuery(country);
+    if (jumpToForm) window.setTimeout(() => {
+      document.getElementById("recipe-entry-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  }
   const activeCountry = selected;
   const activeRecipes = Array.isArray(recipes[activeCountry]) ? recipes[activeCountry] : [];
   const visibleRecipes = useMemo(() => filterRecipesForTable(recipeEntries, query, activeCountry), [recipeEntries, query, activeCountry]);
@@ -1764,7 +1794,7 @@ export default function WeltkochenApp() {
       ) : page === "karte" ? (
         <main className="mx-auto grid max-w-[1600px] gap-6 px-5 py-8 lg:grid-cols-[1.65fr_.85fr]">
           <section className="space-y-5">
-            <WorldMap selected={selected} hovered={hovered} setSelected={setSelected} setHovered={setHovered} recipes={recipes} suggestions={suggestions} selectedRegion={selectedRegion} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} />
+            <WorldMap selected={selected} hovered={hovered} setSelected={setSelected} setHovered={setHovered} recipes={recipes} suggestions={suggestions} selectedRegion={selectedRegion} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} focusCountry={focusCountry} />
             <div className="grid gap-4 rounded-3xl border-2 border-stone-300 bg-[#fff8e9] p-4 shadow-sm md:grid-cols-3">
               <div className="flex items-center gap-3 border-stone-200 md:border-r"><Globe2 className="h-10 w-10" /><div><p className="text-sm text-stone-500">Abgeschlossene Länder</p><p className="text-2xl font-black">{doneCount} / {countries.length}</p></div></div>
               <div className="flex items-center gap-3 border-stone-200 md:border-r"><ChefHat className="h-10 w-10" /><div><p className="text-sm text-stone-500">Rezepte gesamt</p><p className="text-2xl font-black">{recipeEntries.length}</p></div></div>
@@ -1774,7 +1804,35 @@ export default function WeltkochenApp() {
 
           <aside className="space-y-5">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <div className="relative"><Search className="absolute left-4 top-3.5 h-5 w-5 text-stone-500" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Land, Rezept, Kategorie oder Ersteller suchen..." className="w-full rounded-2xl border-2 border-stone-300 bg-[#fffaf0] py-3 pl-12 pr-4 outline-none focus:border-amber-500" /></div>
+              <div className="relative z-30">
+                <Search className="absolute left-4 top-3.5 h-5 w-5 text-stone-500" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && query.trim() && filteredCountries[0]) {
+                      event.preventDefault();
+                      chooseCountryFromSearch(filteredCountries[0]);
+                    }
+                  }}
+                  placeholder="Land suchen, z. B. Deu..."
+                  className="w-full rounded-2xl border-2 border-stone-300 bg-[#fffaf0] py-3 pl-12 pr-4 outline-none focus:border-amber-500"
+                />
+                {query.trim() && filteredCountries.length > 0 && query !== selected && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] max-h-64 overflow-auto rounded-2xl border-2 border-stone-300 bg-white p-2 shadow-xl">
+                    {filteredCountries.slice(0, 8).map((country) => (
+                      <button
+                        key={country}
+                        type="button"
+                        onClick={() => chooseCountryFromSearch(country)}
+                        className="block w-full rounded-xl px-4 py-3 text-left font-bold hover:bg-amber-50"
+                      >
+                        {country}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)} className="rounded-2xl border-2 border-stone-300 bg-[#fffaf0] px-4 py-3 outline-none focus:border-amber-500">
                 <option>Alle Kontinente</option>
                 {regionRows.map((region) => <option key={region.name}>{region.name}</option>)}
@@ -1853,9 +1911,32 @@ export default function WeltkochenApp() {
             <section className="space-y-6">
               <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
                 <CardContent className="p-5">
-                  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><h2 className="flex items-center gap-2 text-2xl font-bold"><MapPin /> Länderauswahl</h2><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-500" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Land suchen..." className="w-full rounded-2xl border-2 border-stone-300 bg-white py-2 pl-9 pr-4 outline-none focus:border-amber-500 md:w-64" /></div></div>
+                  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><h2 className="flex items-center gap-2 text-2xl font-bold"><MapPin /> Länderauswahl</h2><div className="relative z-30">
+                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-stone-500" />
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && query.trim() && filteredCountries[0]) {
+                          event.preventDefault();
+                          chooseCountryFromSearch(filteredCountries[0], true);
+                        }
+                      }}
+                      placeholder="Land suchen..."
+                      className="w-full rounded-2xl border-2 border-stone-300 bg-white py-3 pl-9 pr-4 outline-none focus:border-amber-500 md:w-64"
+                    />
+                    {query.trim() && filteredCountries.length > 0 && query !== selected && (
+                      <div className="absolute left-0 right-0 top-[calc(100%+6px)] max-h-64 overflow-auto rounded-2xl border-2 border-stone-300 bg-white p-2 shadow-xl">
+                        {filteredCountries.slice(0, 8).map((country) => (
+                          <button key={country} type="button" onClick={() => chooseCountryFromSearch(country, true)} className="block w-full rounded-xl px-3 py-2 text-left font-bold hover:bg-amber-50">
+                            {country}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div></div>
                   <RegionCountryPicker regionRows={regionRows} collapsedRegions={collapsedRegions} toggleRegion={toggleRegion} recipes={recipes} selected={selected} setSelected={selectCountryAndJumpToForm} query={query} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} />
-                  {query && <div className="mt-4 rounded-2xl bg-white p-4"><p className="mb-2 text-sm text-stone-500">Suchergebnisse:</p><div className="flex flex-wrap gap-2">{filteredCountries.slice(0, 30).map((country) => <button key={country} onClick={() => selectCountryAndJumpToForm(country)} className="rounded-full bg-stone-100 px-3 py-1 text-sm hover:bg-stone-200">{country}</button>)}</div></div>}
+                  {query && <div className="mt-4 rounded-2xl bg-white p-4"><p className="mb-2 text-sm text-stone-500">Suchergebnisse:</p><div className="flex flex-wrap gap-2">{filteredCountries.slice(0, 30).map((country) => <button key={country} onClick={() => chooseCountryFromSearch(country, true)} className="rounded-full bg-stone-100 px-3 py-1 text-sm hover:bg-stone-200">{country}</button>)}</div></div>}
                 </CardContent>
               </Card>
             </section>
@@ -1919,7 +2000,13 @@ export default function WeltkochenApp() {
                       </div>
                       <div className="mt-3 space-y-2">
                         {(Array.isArray(form.ingredients) ? form.ingredients : []).map((ingredient, index) => (
-                          <div key={index} className="grid grid-cols-[90px_90px_1fr_42px] gap-2">
+                          <div key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_48px] gap-2 md:grid-cols-[90px_110px_minmax(0,1fr)_48px]">
+                            <input
+                              value={ingredient.name}
+                              onChange={(event) => updateIngredient(index, "name", event.target.value)}
+                              placeholder="Zutat, z. B. Orangensaft"
+                              className="col-span-3 min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-3 md:col-span-1"
+                            />
                             <input
                               type="number"
                               min="0"
@@ -1928,24 +2015,18 @@ export default function WeltkochenApp() {
                               value={ingredient.amount}
                               onChange={(event) => updateIngredient(index, "amount", event.target.value)}
                               placeholder="Menge"
-                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-1"
                             />
                             <input
                               value={ingredient.unit}
                               onChange={(event) => updateIngredient(index, "unit", event.target.value)}
                               placeholder="Einheit"
-                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
-                            />
-                            <input
-                              value={ingredient.name}
-                              onChange={(event) => updateIngredient(index, "name", event.target.value)}
-                              placeholder="Zutat"
-                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-2"
                             />
                             <button
                               type="button"
                               onClick={() => removeIngredientRow(index)}
-                              className="grid min-h-10 place-items-center rounded-xl border border-stone-300 bg-white"
+                              className="grid min-h-12 place-items-center rounded-xl border border-stone-300 bg-white md:order-4"
                               aria-label="Zutat entfernen"
                             >
                               <Trash2 className="h-4 w-4" />
