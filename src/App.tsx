@@ -197,15 +197,59 @@ async function saveCloudState(state) {
 }
 
 async function getMyProfile() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
   if (!user) return null;
-  const { data, error } = await supabase.from("weltkochen_profiles").select("*").eq("id", user.id).single();
+
+  let { data, error } = await supabase
+    .from("weltkochen_profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
   if (error) throw error;
+
+  // Nach der E-Mail-Bestätigung existiert der Auth-Benutzer bereits,
+  // das Profil wird aber erst beim ersten erfolgreichen Login angelegt.
+  if (!data) {
+    const metadata = user.user_metadata || {};
+    const username = String(metadata.weltkochen_username || "").trim();
+    const displayName = String(metadata.weltkochen_display_name || "").trim();
+    const inviteCode = String(metadata.weltkochen_invite_code || "").trim();
+
+    if (username && inviteCode) {
+      const { error: claimError } = await supabase.rpc("weltkochen_claim_profile", {
+        p_username: username.toLowerCase(),
+        p_display_name: displayName || username,
+        p_invite_code: inviteCode.toUpperCase(),
+      });
+      if (claimError) throw claimError;
+
+      const profileResult = await supabase
+        .from("weltkochen_profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileResult.error) throw profileResult.error;
+      data = profileResult.data;
+    } else {
+      throw new Error("Dein Profil ist noch nicht vollständig eingerichtet. Öffne „Benutzer anlegen“, fülle alle Felder inklusive Einladungscode aus und sende erneut ab.");
+    }
+  }
+
   if (data.blocked) {
     await supabase.auth.signOut();
     throw new Error("Dieser Benutzer ist gesperrt.");
   }
-  return { id: data.id, email: data.email, username: data.username, displayName: data.display_name, role: data.role };
+
+  return {
+    id: data.id,
+    email: data.email,
+    username: data.username,
+    displayName: data.display_name,
+    role: data.role,
+  };
 }
 
 function toGermanCountryName(name) {
@@ -434,41 +478,105 @@ function AuthScreen({ onLogin, storageError }) {
   const [displayName, setDisplayName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+    setSuccess("");
     setBusy(true);
+
     try {
       if (!supabase) throw new Error("Supabase ist nicht verbunden.");
-      if (!email.trim() || !password) throw new Error("Bitte E-Mail und Passwort eingeben.");
+
+      const cleanEmail = email.trim();
+      const cleanUsername = username.trim().toLowerCase();
+      const cleanDisplayName = displayName.trim();
+      const cleanInviteCode = inviteCode.trim().toUpperCase();
 
       if (mode === "register") {
-        if (!username.trim()) throw new Error("Bitte einen Benutzernamen eingeben.");
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-        });
-        if (signUpError) throw signUpError;
-        if (!data.session) throw new Error("Bitte bestätige zuerst die E-Mail und melde dich danach an.");
-
-        const { error: claimError } = await supabase.rpc("weltkochen_claim_profile", {
-          p_username: username.trim().toLowerCase(),
-          p_display_name: displayName.trim() || username.trim(),
-          p_invite_code: inviteCode.trim().toUpperCase(),
-        });
-        if (claimError) {
-          await supabase.auth.signOut();
-          throw claimError;
+        if (!cleanDisplayName || !cleanUsername || !cleanInviteCode || !cleanEmail || !password) {
+          throw new Error("Bitte fülle alle Felder aus.");
         }
-      } else {
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+        if (password.length < 8) {
+          throw new Error("Das Passwort muss mindestens 8 Zeichen lang sein.");
+        }
+
+        // Wichtig: Erst Einladungscode prüfen, dann überhaupt eine Auth-E-Mail erzeugen.
+        const { data: inviteValid, error: inviteError } = await supabase.rpc(
+          "weltkochen_validate_invite_code",
+          { p_code: cleanInviteCode },
+        );
+        if (inviteError) throw inviteError;
+        if (!inviteValid) {
+          throw new Error("Der Einladungscode ist ungültig oder wurde bereits verwendet.");
+        }
+
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
           password,
+          options: {
+            data: {
+              weltkochen_username: cleanUsername,
+              weltkochen_display_name: cleanDisplayName,
+              weltkochen_invite_code: cleanInviteCode,
+            },
+          },
         });
-        if (loginError) throw loginError;
+
+        if (signUpError) {
+          // Reparatur für Konten, die vorher schon ohne Einladungscode
+          // angelegt und per E-Mail bestätigt wurden.
+          const message = String(signUpError.message || "").toLowerCase();
+          if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+            const { error: loginExistingError } = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password,
+            });
+            if (loginExistingError) {
+              throw new Error("Für diese E-Mail existiert bereits ein Konto. Verwende das zugehörige Passwort oder „Passwort vergessen?“.");
+            }
+
+            const { error: claimExistingError } = await supabase.rpc("weltkochen_claim_profile", {
+              p_username: cleanUsername,
+              p_display_name: cleanDisplayName,
+              p_invite_code: cleanInviteCode,
+            });
+            if (claimExistingError) throw claimExistingError;
+
+            onLogin(await getMyProfile());
+            return;
+          }
+          throw signUpError;
+        }
+
+        if (data.session) {
+          const { error: claimError } = await supabase.rpc("weltkochen_claim_profile", {
+            p_username: cleanUsername,
+            p_display_name: cleanDisplayName,
+            p_invite_code: cleanInviteCode,
+          });
+          if (claimError) throw claimError;
+          onLogin(await getMyProfile());
+          return;
+        }
+
+        setSuccess("Fast fertig: Bitte bestätige jetzt die E-Mail. Danach kannst du dich mit E-Mail und Passwort anmelden.");
+        setMode("login");
+        setPassword("");
+        return;
       }
+
+      if (!cleanEmail || !password) {
+        throw new Error("Bitte E-Mail und Passwort eingeben.");
+      }
+
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+      if (loginError) throw loginError;
 
       onLogin(await getMyProfile());
     } catch (err) {
@@ -495,14 +603,29 @@ function AuthScreen({ onLogin, storageError }) {
           <h2 className="text-2xl font-black">{mode === "login" ? "Einloggen" : "Neues Profil"}</h2>
           <div className="mt-5 space-y-4">
             {mode === "register" && <>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Anzeigename</span><input value={displayName} onChange={e=>setDisplayName(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Benutzername</span><input value={username} onChange={e=>setUsername(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Einladungscode</span><input value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 uppercase" /></label>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Anzeigename</span><input required value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Benutzername</span><input required value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Einladungscode</span><input required value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} autoComplete="off" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 uppercase" /></label>
             </>}
-            <label className="block"><span className="mb-1 block text-sm font-semibold">E-Mail</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
-            <label className="block"><span className="mb-1 block text-sm font-semibold">Passwort</span><input type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">E-Mail</span><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Passwort</span><input required type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3" /></label>
+            {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{success}</div>}
             {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}
-            <Button type="submit" disabled={busy} className="w-full rounded-2xl bg-stone-900 py-6 text-white">{busy ? "Bitte warten..." : mode === "login" ? "Anmelden" : "Benutzer erstellen"}</Button>
+            <Button
+              type="submit"
+              disabled={
+                busy ||
+                (mode === "register" &&
+                  (!displayName.trim() ||
+                    !username.trim() ||
+                    !inviteCode.trim() ||
+                    !email.trim() ||
+                    password.length < 8))
+              }
+              className="w-full rounded-2xl bg-stone-900 py-6 text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busy ? "Bitte warten..." : mode === "login" ? "Anmelden" : "Benutzer erstellen"}
+            </Button>
           </div>
         </form>
       </div>
