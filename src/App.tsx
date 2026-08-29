@@ -1047,6 +1047,34 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
     setUserActionId("");
   }
 
+  async function deleteUser(user) {
+    if (!supabase || userActionId || !user?.id) return;
+    if (user.id === myUserId) return;
+
+    const label = user.display_name || user.username || user.email || "diesen Benutzer";
+    const confirmed = window.confirm(
+      `Benutzer „${label}“ wirklich dauerhaft löschen?\n\nDer Login und die Bewertungen dieses Benutzers werden gelöscht. Bereits angelegte Rezepte bleiben erhalten.`
+    );
+    if (!confirmed) return;
+
+    setUserActionId(user.id);
+    setUserMessage("");
+    setUserError("");
+
+    const { error } = await supabase.rpc("weltkochen_delete_user", {
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      setUserError(error.message);
+    } else {
+      setUserMessage(`Benutzer „${label}“ wurde dauerhaft gelöscht.`);
+      await loadAdminUsers();
+    }
+
+    setUserActionId("");
+  }
+
   async function createInviteCode() {
     if (!supabase || inviteBusy) return;
 
@@ -1167,7 +1195,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
               <div>
                 <h3 className="text-2xl font-black">Benutzerverwaltung</h3>
                 <p className="mt-1 text-sm text-stone-600">
-                  Benutzer sperren oder wieder freigeben.
+                  Benutzer sperren, wieder freigeben oder dauerhaft löschen.
                 </p>
               </div>
               <Button
@@ -1229,25 +1257,39 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
                           </div>
                         </div>
 
-                        <Button
-                          type="button"
-                          variant={isBlocked ? "outline" : "destructive"}
-                          disabled={isMe || userActionId === user.id}
-                          onClick={() => setUserBlocked(user.id, !isBlocked)}
-                          className={`rounded-xl ${
-                            isBlocked
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                              : ""
-                          }`}
-                        >
-                          {userActionId === user.id
-                            ? "Bitte warten..."
-                            : isMe
-                              ? "Eigenes Konto"
-                              : isBlocked
-                                ? "Entsperren"
-                                : "Sperren"}
-                        </Button>
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                          <Button
+                            type="button"
+                            variant={isBlocked ? "outline" : "destructive"}
+                            disabled={isMe || userActionId === user.id}
+                            onClick={() => setUserBlocked(user.id, !isBlocked)}
+                            className={`w-full rounded-xl sm:w-auto ${
+                              isBlocked
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                : ""
+                            }`}
+                          >
+                            {userActionId === user.id
+                              ? "Bitte warten..."
+                              : isMe
+                                ? "Eigenes Konto"
+                                : isBlocked
+                                  ? "Entsperren"
+                                  : "Sperren"}
+                          </Button>
+
+                          {!isMe && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={userActionId === user.id}
+                              onClick={() => deleteUser(user)}
+                              className="w-full rounded-xl border-red-300 bg-red-50 text-red-700 hover:bg-red-100 sm:w-auto"
+                            >
+                              {userActionId === user.id ? "Bitte warten..." : "Löschen"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
