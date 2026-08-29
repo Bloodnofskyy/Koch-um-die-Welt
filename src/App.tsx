@@ -330,7 +330,6 @@ async function getMyProfile() {
     username: data.username,
     displayName: data.display_name,
     role: data.role,
-    onboardingCompleted: Boolean(data.onboarding_completed),
   };
 }
 
@@ -2117,208 +2116,6 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   );
 }
 
-
-function OnboardingTour({
-  currentUser,
-  stepIndex,
-  onStepChange,
-  onFinish,
-  onSkip,
-}) {
-  const isAdmin = currentUser?.role === "admin";
-  const steps = useMemo(() => {
-    const base = [
-      {
-        key: "welcome",
-        page: "karte",
-        target: "brand",
-        emoji: "👋",
-        title: "Willkommen bei Koch dich um die Welt",
-        text: "In weniger als zwei Minuten zeigen wir dir die wichtigsten Funktionen. Danach kannst du direkt mit deiner kulinarischen Weltreise starten.",
-      },
-      {
-        key: "map",
-        page: "karte",
-        target: "karte",
-        emoji: "🌍",
-        title: "Die Weltkarte",
-        text: "Hier beginnt deine Reise. Wähle ein Land aus, entdecke vorhandene Rezepte und sieh sofort deinen Fortschritt. Länder mit genügend gut bewerteten Rezepten werden grün.",
-      },
-      {
-        key: "recipes",
-        page: "details",
-        target: "details",
-        emoji: "🍳",
-        title: "Rezepte eintragen & importieren",
-        text: "Hier kannst du eigene Rezepte anlegen oder einen Rezept-Link importieren. Zutaten, Personenzahl, Kategorie, Bilder und Zubereitung werden sauber gespeichert.",
-      },
-      {
-        key: "rating",
-        page: "karte",
-        target: "karte",
-        emoji: "⭐",
-        title: "Rezepte bewerten",
-        text: "Öffne ein Rezept über ein Land und vergib Sterne. Die Bewertungen entscheiden zusammen mit der benötigten Rezeptanzahl, wann ein Land als abgeschlossen gilt.",
-      },
-      {
-        key: "favorites",
-        page: "favoriten",
-        target: "favoriten",
-        emoji: "❤️",
-        title: "Favoriten",
-        text: "Mit dem Herz speicherst du Rezepte, die du schnell wiederfinden möchtest. Alle gemerkten Gerichte landen gesammelt in diesem Bereich.",
-      },
-      {
-        key: "planner",
-        page: "kochplan",
-        target: "kochplan",
-        emoji: "📅",
-        title: "Dein Kochplan",
-        text: "Plane Gerichte für einzelne Tage oder eine ganze Woche. Du kannst nach einem Rezept oder direkt nach einem Land suchen und die Personenzahl festlegen.",
-      },
-      {
-        key: "shopping",
-        page: null,
-        target: "shopping",
-        emoji: "🛒",
-        title: "Die Einkaufsliste",
-        text: "Übernimm Zutaten aus einzelnen Rezepten oder gleich aus deiner ganzen Kochwoche. Gleiche Zutaten und passende Einheiten werden automatisch zusammengefasst. Eigene Einkäufe kannst du ebenfalls ergänzen.",
-        shopping: true,
-      },
-    ];
-
-    if (isAdmin) {
-      base.push({
-        key: "admin",
-        page: "admin",
-        target: "admin",
-        emoji: "🛠️",
-        title: "Dein Admin-Bereich",
-        text: "Als Admin verwaltest du Benutzer, Einladungscodes, Regeln, gelöschte Rezepte und den Aktivitätsverlauf. Normale Benutzer sehen diesen Bereich nicht.",
-      });
-    }
-
-    base.push({
-      key: "finish",
-      page: "karte",
-      target: "brand",
-      emoji: "🏁",
-      title: "Bereit für die Weltreise",
-      text: "Das war's. Such dir jetzt ein Land aus, probiere ein Rezept und arbeite dich Stück für Stück um die Welt. Das Tutorial kannst du später jederzeit erneut starten.",
-    });
-
-    return base;
-  }, [isAdmin]);
-
-  const step = steps[Math.min(stepIndex, steps.length - 1)];
-  const [targetRect, setTargetRect] = useState(null);
-
-  useEffect(() => {
-    const updateTarget = () => {
-      const candidates = [...document.querySelectorAll(`[data-tour="${step.target}"]`)];
-      const visible = candidates.find((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
-      });
-      if (!visible) {
-        setTargetRect(null);
-        return;
-      }
-      const rect = visible.getBoundingClientRect();
-      setTargetRect({
-        left: Math.max(8, rect.left - 6),
-        top: Math.max(8, rect.top - 6),
-        width: Math.min(window.innerWidth - 16, rect.width + 12),
-        height: rect.height + 12,
-      });
-    };
-
-    const timer = window.setTimeout(updateTarget, 180);
-    window.addEventListener("resize", updateTarget);
-    window.addEventListener("scroll", updateTarget, true);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("resize", updateTarget);
-      window.removeEventListener("scroll", updateTarget, true);
-    };
-  }, [step.key, step.target]);
-
-  const cardTop = targetRect && targetRect.top > window.innerHeight * 0.55
-    ? Math.max(16, targetRect.top - 300)
-    : targetRect
-      ? Math.min(window.innerHeight - 280, targetRect.top + targetRect.height + 18)
-      : null;
-
-  return (
-    <div className="fixed inset-0 z-[300]">
-      <div className="absolute inset-0 bg-stone-950/60 backdrop-blur-[1px]" />
-
-      {targetRect && (
-        <div
-          className="pointer-events-none fixed rounded-2xl border-2 border-amber-300 shadow-[0_0_0_9999px_rgba(28,25,23,.28),0_0_30px_rgba(251,191,36,.55)] transition-all duration-300"
-          style={targetRect}
-        />
-      )}
-
-      <div
-        className="fixed left-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-[1.75rem] border border-stone-200 bg-[#fffaf0] p-5 shadow-2xl sm:p-6"
-        style={cardTop == null ? { top: "50%", transform: "translate(-50%, -50%)" } : { top: Math.max(16, cardTop) }}
-      >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-2xl">{step.emoji}</div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">
-                Schritt {stepIndex + 1} von {steps.length}
-              </p>
-              <div className="mt-1 flex gap-1">
-                {steps.map((entry, index) => (
-                  <span
-                    key={entry.key}
-                    className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-6 bg-amber-500" : index < stepIndex ? "w-3 bg-stone-500" : "w-3 bg-stone-200"}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <button type="button" onClick={onSkip} className="text-xs font-bold text-stone-500 hover:text-stone-900">
-            Überspringen
-          </button>
-        </div>
-
-        <h2 className="text-2xl font-black tracking-tight text-stone-950">{step.title}</h2>
-        <p className="mt-3 leading-7 text-stone-600">{step.text}</p>
-
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={stepIndex === 0}
-            onClick={() => onStepChange(Math.max(0, stepIndex - 1), steps[Math.max(0, stepIndex - 1)])}
-            className="rounded-xl border-stone-300 bg-white"
-          >
-            Zurück
-          </Button>
-
-          {stepIndex === steps.length - 1 ? (
-            <Button type="button" onClick={onFinish} className="rounded-xl bg-amber-400 px-5 font-black text-stone-950 hover:bg-amber-300">
-              Los geht's
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => onStepChange(stepIndex + 1, steps[stepIndex + 1])}
-              className="rounded-xl bg-stone-900 px-5 font-black text-white hover:bg-stone-800"
-            >
-              Weiter <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function WeltkochenApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [recipes, setRecipes] = useState(() => loadRecipes("global", "Demo"));
@@ -2358,8 +2155,6 @@ export default function WeltkochenApp() {
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
-  const [tutorialActive, setTutorialActive] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
 
   const formIsDirty = useMemo(
     () => recipeFormSignature(form) !== savedFormSignature,
@@ -2401,10 +2196,6 @@ export default function WeltkochenApp() {
         if (session && !cancelled) {
           const profile = await getMyProfile();
           setCurrentUser(profile);
-          if (profile && !profile.onboardingCompleted) {
-            setTutorialStep(0);
-            setTutorialActive(true);
-          }
           const [cloud, content, favoritesResult, shoppingResult, mealPlanResult] = await Promise.all([
             loadCloudState().catch(() => null),
             loadNormalizedContent(),
@@ -2500,6 +2291,16 @@ export default function WeltkochenApp() {
   }
   const activeCountry = selected;
   const activeRecipes = Array.isArray(recipes[activeCountry]) ? recipes[activeCountry] : [];
+  const activeQualifiedCount = getQualifiedRecipesCount(activeRecipes, settings.minAverageRatingForCompletion);
+  const activeCountryComplete = activeQualifiedCount >= settings.requiredRecipesPerCountry;
+  const activeRatedValues = activeRecipes
+    .map((recipe) => getRecipeAverage(recipe))
+    .filter((value) => value !== "–")
+    .map(Number)
+    .filter(Number.isFinite);
+  const activeCountryAverage = activeRatedValues.length
+    ? (activeRatedValues.reduce((sum, value) => sum + value, 0) / activeRatedValues.length).toFixed(1)
+    : "–";
   const planRecipeMatches = useMemo(() => {
     const clean = planSearch.trim().toLocaleLowerCase("de-DE");
     if (!clean) return [];
@@ -2657,10 +2458,6 @@ export default function WeltkochenApp() {
 
   if (!currentUser) return <AuthScreen onLogin={async (user) => {
     setCurrentUser(user);
-    if (user && !user.onboardingCompleted) {
-      setTutorialStep(0);
-      setTutorialActive(true);
-    }
     try {
       const [content, favoritesResult, shoppingResult, mealPlanResult] = await Promise.all([
         loadNormalizedContent(),
@@ -2704,52 +2501,6 @@ export default function WeltkochenApp() {
       .select("id,plan_date,recipe_id,servings,note,created_at")
       .order("plan_date", { ascending: true });
     if (!error) setMealPlan(data || []);
-  }
-
-  function startTutorial() {
-    if (page === "details" && formIsDirty) {
-      const restart = window.confirm("Du hast ungespeicherte Änderungen am Rezept. Tutorial trotzdem starten?");
-      if (!restart) return;
-    }
-    setOpenedRecipe(null);
-    setShoppingListOpen(false);
-    setTutorialStep(0);
-    setPage("karte");
-    setTutorialActive(true);
-  }
-
-  function changeTutorialStep(nextIndex, nextStep) {
-    setTutorialStep(nextIndex);
-    setOpenedRecipe(null);
-    if (nextStep?.shopping) {
-      setShoppingListOpen(true);
-    } else {
-      setShoppingListOpen(false);
-    }
-    if (nextStep?.page) setPage(nextStep.page);
-  }
-
-  async function completeTutorial() {
-    setTutorialActive(false);
-    setShoppingListOpen(false);
-    setPage("karte");
-    if (!currentUser?.id) return;
-
-    const { error } = await supabase
-      .from("weltkochen_profiles")
-      .update({ onboarding_completed: true })
-      .eq("id", currentUser.id);
-
-    if (error) {
-      setStorageError("Tutorial-Status konnte nicht gespeichert werden.");
-      return;
-    }
-
-    setCurrentUser((user) => user ? { ...user, onboardingCompleted: true } : user);
-  }
-
-  async function skipTutorial() {
-    await completeTutorial();
   }
 
   async function logout() {
@@ -3339,7 +3090,7 @@ export default function WeltkochenApp() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] pb-24 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <button data-tour="brand" onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
+          <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
             <div className="grid h-12 w-12 place-items-center rounded-2xl border border-stone-200 bg-white/95 shadow-sm shadow-[0_8px_24px_rgba(70,50,30,.12)] md:h-16 md:w-16"><ChefHat className="h-6 w-6 md:h-8 md:w-8" /></div>
             <div>
               <h1 className="text-lg font-black tracking-tight sm:text-2xl md:text-3xl">Koch dich um die Welt</h1>
@@ -3348,24 +3099,16 @@ export default function WeltkochenApp() {
           </button>
 
           <nav className="hidden flex-wrap items-center gap-2 rounded-2xl border border-stone-200 bg-white/70 p-1.5 shadow-sm md:flex">
-            <button data-tour="karte" onClick={() => navigateTo("karte")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "karte" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Globe2 size={20} /> Weltkarte</button>
-            <button data-tour="details" onClick={() => navigateTo("details")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "details" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BookOpen size={20} /> Rezept eintragen</button>
-            <button data-tour="favoriten" onClick={() => navigateTo("favoriten")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "favoriten" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Heart size={20} /> Favoriten</button>
-            <button data-tour="kochplan" onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "kochplan" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><CalendarDays size={20} /> Kochplan</button>
-            {currentUser.role === "admin" && <button data-tour="admin" onClick={() => navigateTo("admin")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "admin" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BarChart3 size={20} /> Admin</button>}
-            <button data-tour="shopping" onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
+            <button onClick={() => navigateTo("karte")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "karte" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Globe2 size={20} /> Weltkarte</button>
+            <button onClick={() => navigateTo("details")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "details" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BookOpen size={20} /> Rezept eintragen</button>
+            <button onClick={() => navigateTo("favoriten")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "favoriten" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Heart size={20} /> Favoriten</button>
+            <button onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "kochplan" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><CalendarDays size={20} /> Kochplan</button>
+            {currentUser.role === "admin" && <button onClick={() => navigateTo("admin")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "admin" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BarChart3 size={20} /> Admin</button>}
+            <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            <button
-              type="button"
-              onClick={startTutorial}
-              title="Tutorial erneut starten"
-              className="hidden rounded-xl border border-stone-200 bg-white/90 px-3 py-2 text-sm font-bold text-stone-600 shadow-sm transition hover:bg-white hover:text-stone-950 sm:block"
-            >
-              ? Tutorial
-            </button>
+          <div className="flex items-center gap-3">
             <div className="hidden rounded-2xl border border-stone-200 bg-white/95 shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
             <Button onClick={logout} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-4 py-6 text-stone-800 hover:bg-stone-100">Abmelden</Button>
           </div>
@@ -3394,13 +3137,57 @@ export default function WeltkochenApp() {
           }}
         />
       ) : page === "karte" ? (
-        <main className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 md:px-5 md:py-8 lg:grid-cols-[1.65fr_.85fr]">
+        <main className="mx-auto max-w-[1600px] px-4 py-5 md:px-5 md:py-8">
+          <section className="mb-6 overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-900 text-white shadow-[0_24px_60px_rgba(0,0,0,.16)]">
+            <div className="grid gap-6 p-5 md:p-7 lg:grid-cols-[1.25fr_.75fr] lg:items-end">
+              <div>
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-amber-300">
+                  <Globe2 className="h-4 w-4" /> Deine kulinarische Weltreise
+                </div>
+                <h2 className="max-w-3xl text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
+                  Einmal um die Welt – Rezept für Rezept.
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300 sm:text-base">
+                  Entdecke Länder, sammle eure besten Gerichte und mach die Weltkarte Schritt für Schritt grüner.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-stone-400">Fortschritt</p>
+                    <p className="mt-1 text-3xl font-black">{progress}%</p>
+                  </div>
+                  <p className="text-right text-sm font-bold text-stone-200">{doneCount} / {countries.length}<br /><span className="font-medium text-stone-400">Länder abgeschlossen</span></p>
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-amber-400 transition-all duration-500" style={{ width: `${Math.max(2, progress)}%` }} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-[1.65fr_.85fr]">
           <section className="space-y-5">
             <WorldMap selected={selected} hovered={hovered} setSelected={setSelected} setHovered={setHovered} recipes={recipes} suggestions={suggestions} selectedRegion={selectedRegion} requiredRecipes={settings.requiredRecipesPerCountry} minAverageRating={settings.minAverageRatingForCompletion} focusCountry={focusCountry} />
-            <div className="grid gap-4 rounded-3xl border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] p-4 shadow-sm md:grid-cols-3">
-              <div className="flex items-center gap-3 border-stone-200 md:border-r"><Globe2 className="h-10 w-10" /><div><p className="text-sm text-stone-500">Abgeschlossene Länder</p><p className="text-xl font-black tracking-tight md:text-2xl">{doneCount} / {countries.length}</p></div></div>
-              <div className="flex items-center gap-3 border-stone-200 md:border-r"><ChefHat className="h-10 w-10" /><div><p className="text-sm text-stone-500">Rezepte gesamt</p><p className="text-xl font-black tracking-tight md:text-2xl">{recipeEntries.length}</p></div></div>
-              <div className="flex items-center gap-3"><Star className="h-10 w-10 fill-amber-400 text-amber-500" /><div><p className="text-sm text-stone-500">Durchschnitt</p><p className="text-xl font-black tracking-tight md:text-2xl">{averageRating} / 5</p></div></div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><Globe2 className="h-5 w-5" /></div>
+                  <div><p className="text-xs font-black uppercase tracking-wide text-stone-400">Länder</p><p className="text-2xl font-black">{doneCount}<span className="text-sm font-bold text-stone-400"> / {countries.length}</span></p></div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-amber-100 text-amber-700"><ChefHat className="h-5 w-5" /></div>
+                  <div><p className="text-xs font-black uppercase tracking-wide text-stone-400">Rezepte</p><p className="text-2xl font-black">{recipeEntries.length}</p></div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-yellow-100 text-yellow-700"><Star className="h-5 w-5 fill-current" /></div>
+                  <div><p className="text-xs font-black uppercase tracking-wide text-stone-400">Ø Bewertung</p><p className="text-2xl font-black">{averageRating}<span className="text-sm font-bold text-stone-400"> / 5</span></p></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -3417,8 +3204,8 @@ export default function WeltkochenApp() {
                       chooseCountryFromSearch(filteredCountries[0]);
                     }
                   }}
-                  placeholder="Land suchen, z. B. Deu..."
-                  className="w-full rounded-2xl border-2 border-stone-300 bg-[#fffaf0] py-3 pl-12 pr-4 outline-none focus:border-amber-500"
+                  placeholder="Welches Land möchtest du entdecken?"
+                  className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-12 pr-4 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                 />
                 {query.trim() && filteredCountries.length > 0 && query !== selected && (
                   <div className="absolute left-0 right-0 top-[calc(100%+6px)] max-h-64 overflow-auto rounded-2xl border-2 border-stone-300 bg-white p-2 shadow-xl">
@@ -3435,7 +3222,7 @@ export default function WeltkochenApp() {
                   </div>
                 )}
               </div>
-              <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)} className="rounded-2xl border-2 border-stone-300 bg-[#fffaf0] px-4 py-3 outline-none focus:border-amber-500">
+              <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)} className="rounded-2xl border border-stone-200 bg-white/95 px-4 py-3.5 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100">
                 <option>Alle Kontinente</option>
                 {regionRows.map((region) => <option key={region.name}>{region.name}</option>)}
               </select>
@@ -3461,18 +3248,25 @@ export default function WeltkochenApp() {
             ) : (
               <Card className="rounded-[1.75rem] border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] shadow-sm">
                 <CardContent className="p-5">
-                  <p className="text-sm uppercase tracking-wide text-stone-500">Entdecken</p>
-                  <h3 className="mt-1 text-xl font-black">Was möchtest du sehen?</h3>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">Entdecken</p>
+                  <h3 className="mt-1 text-2xl font-black tracking-tight">Wo geht die Reise hin?</h3>
+                  <p className="mt-1 text-sm text-stone-500">Lass dich überraschen oder mach gezielt weiter.</p>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => setDiscoverMode("random")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "random" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
-                      🎲 Zufall
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                    <button type="button" onClick={() => setDiscoverMode("random")} className={`group rounded-2xl border p-3 text-left transition ${discoverMode === "random" ? "border-stone-900 bg-stone-900 text-white shadow-md" : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"}`}>
+                      <span className={`mb-2 grid h-9 w-9 place-items-center rounded-xl text-lg ${discoverMode === "random" ? "bg-white/10" : "bg-amber-100"}`}>🎲</span>
+                      <span className="block text-sm font-black">Zufall</span>
+                      <span className={`mt-0.5 block text-[11px] ${discoverMode === "random" ? "text-stone-300" : "text-stone-400"}`}>Überrasch mich</span>
                     </button>
-                    <button type="button" onClick={() => setDiscoverMode("next")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "next" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
-                      🌍 Nächstes Land
+                    <button type="button" onClick={() => setDiscoverMode("next")} className={`group rounded-2xl border p-3 text-left transition ${discoverMode === "next" ? "border-stone-900 bg-stone-900 text-white shadow-md" : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"}`}>
+                      <span className={`mb-2 grid h-9 w-9 place-items-center rounded-xl text-lg ${discoverMode === "next" ? "bg-white/10" : "bg-emerald-100"}`}>🧭</span>
+                      <span className="block text-sm font-black">Weiterreisen</span>
+                      <span className={`mt-0.5 block text-[11px] ${discoverMode === "next" ? "text-stone-300" : "text-stone-400"}`}>Nächstes Land</span>
                     </button>
-                    <button type="button" onClick={() => setDiscoverMode("top")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "top" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
-                      ⭐ Top-Rezept
+                    <button type="button" onClick={() => setDiscoverMode("top")} className={`group rounded-2xl border p-3 text-left transition ${discoverMode === "top" ? "border-stone-900 bg-stone-900 text-white shadow-md" : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"}`}>
+                      <span className={`mb-2 grid h-9 w-9 place-items-center rounded-xl text-lg ${discoverMode === "top" ? "bg-white/10" : "bg-yellow-100"}`}>⭐</span>
+                      <span className="block text-sm font-black">Bestes Rezept</span>
+                      <span className={`mt-0.5 block text-[11px] ${discoverMode === "top" ? "text-stone-300" : "text-stone-400"}`}>Euer Favorit</span>
                     </button>
                   </div>
 
@@ -3527,11 +3321,42 @@ export default function WeltkochenApp() {
               </Card>
             )}
 
+            {recipeEntries.length > 0 && (
+              <button
+                type="button"
+                onClick={showRandomRecipe}
+                className="group relative w-full overflow-hidden rounded-[1.75rem] border border-stone-200 bg-stone-900 p-5 text-left text-white shadow-[0_16px_40px_rgba(0,0,0,.14)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(0,0,0,.18)]"
+              >
+                <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl" />
+                <div className="relative flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-300">Was kochen wir heute?</p>
+                    <p className="mt-1 text-xl font-black">Lass dich überraschen.</p>
+                    <p className="mt-1 text-sm text-stone-400">Ein Klick wählt zufällig ein Rezept aus eurer Sammlung.</p>
+                  </div>
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-2xl transition group-hover:rotate-12 group-hover:scale-110">🎲</div>
+                </div>
+              </button>
+            )}
+
             <Card className="rounded-[1.75rem] border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] shadow-sm">
               <CardContent className="p-5">
-                <p className="text-sm uppercase tracking-wide text-stone-500">Ausgewähltes Land</p>
-                <h3 className="mt-1 text-2xl font-black">{activeCountry}</h3>
-                <p className="mt-1 text-sm text-stone-500">{getQualifiedRecipesCount(activeRecipes, settings.minAverageRatingForCompletion)} / {settings.requiredRecipesPerCountry} Rezepte über {settings.minAverageRatingForCompletion} Sterne bis abgeschlossen</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">Ausgewähltes Land</p>
+                    <h3 className="mt-1 flex items-center gap-2 text-3xl font-black tracking-tight"><span>🌍</span>{activeCountry}</h3>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-black ${activeCountryComplete ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-700"}`}>
+                        {activeCountryComplete ? "✓ Abgeschlossen" : `${activeQualifiedCount}/${settings.requiredRecipesPerCountry} qualifiziert`}
+                      </span>
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">{activeRecipes.length} Rezept{activeRecipes.length === 1 ? "" : "e"}</span>
+                      <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-black text-yellow-800">Ø {activeCountryAverage} ⭐</span>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => navigateTo("details")} className="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-stone-800">
+                    + Rezept eintragen
+                  </button>
+                </div>
                 <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h4 className="font-black">Rezeptvorschläge</h4>
@@ -3557,18 +3382,21 @@ export default function WeltkochenApp() {
                 {activeRecipes.length ? (
                   <div className="mt-3 space-y-3">
                     {activeRecipes.slice(0, 4).map((recipe) => (
-                      <button key={recipe.id} onClick={() => openRecipe(recipe, activeCountry)} className="flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition hover:border-amber-300 hover:bg-amber-50">
-                        {recipe.image ? (
-                          <img src={recipe.image} alt={recipe.dish} className="h-20 w-24 shrink-0 rounded-xl object-cover" />
-                        ) : (
-                          <div className="grid h-20 w-24 shrink-0 place-items-center rounded-xl bg-stone-100"><ChefHat className="h-6 w-6 text-stone-400" /></div>
-                        )}
+                      <button key={recipe.id} onClick={() => openRecipe(recipe, activeCountry)} className="group flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md">
+                        <div className="relative shrink-0 overflow-hidden rounded-xl">
+                          {recipe.image ? (
+                            <img src={recipe.image} alt={recipe.dish} loading="lazy" className="h-24 w-28 object-cover transition duration-300 group-hover:scale-105" />
+                          ) : (
+                            <div className="grid h-24 w-28 place-items-center bg-stone-100"><ChefHat className="h-6 w-6 text-stone-400" /></div>
+                          )}
+                          <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">{recipe.category || "Hauptgericht"}</span>
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-black">{recipe.dish}</p>
                             {favoriteRecipeIds.includes(recipe.id) && <Heart className="h-4 w-4 shrink-0 fill-rose-500 text-rose-500" />}
                           </div>
-                          <p className="mt-1 text-xs text-stone-500">{recipe.category || "Hauptgericht"} · {recipe.createdByName || recipe.createdBy}</p>
+                          <p className="mt-1 text-xs text-stone-500">von {recipe.createdByName || recipe.createdBy}</p>
                           <div className="mt-2 flex items-center gap-2">
                             <RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(activeCountry, recipe.id, rating)} small />
                             <span className="text-xs text-stone-500">Ø {getRecipeAverage(recipe)}</span>
@@ -3581,6 +3409,7 @@ export default function WeltkochenApp() {
               </CardContent>
             </Card>
           </aside>
+          </div>
         </main>
       ) : page === "favoriten" ? (
         <main className="mx-auto max-w-6xl px-4 py-6 md:px-5 md:py-8">
@@ -4141,25 +3970,6 @@ export default function WeltkochenApp() {
           </div>
         </div>
       )}
-      {tutorialActive && (
-        <OnboardingTour
-          currentUser={currentUser}
-          stepIndex={tutorialStep}
-          onStepChange={changeTutorialStep}
-          onFinish={completeTutorial}
-          onSkip={skipTutorial}
-        />
-      )}
-
-      <button
-        type="button"
-        onClick={startTutorial}
-        title="Tutorial erneut starten"
-        className="fixed bottom-24 right-3 z-[109] grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-sm font-black text-stone-700 shadow-lg md:hidden"
-      >
-        ?
-      </button>
-
       <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-stone-200 bg-[#fffaf0]/96 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.10)] backdrop-blur-xl md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
@@ -4171,7 +3981,6 @@ export default function WeltkochenApp() {
             <button
               key={target}
               type="button"
-              data-tour={target}
               onClick={() => navigateTo(target)}
               className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
             >
@@ -4181,7 +3990,6 @@ export default function WeltkochenApp() {
           ))}
           <button
             type="button"
-            data-tour="shopping"
             onClick={() => setShoppingListOpen(true)}
             className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
           >
@@ -4197,7 +4005,6 @@ export default function WeltkochenApp() {
         {currentUser.role === "admin" && (
           <button
             type="button"
-            data-tour="admin"
             onClick={() => navigateTo("admin")}
             className={`mx-auto mt-1 block rounded-lg px-3 py-1 text-[11px] font-bold ${page === "admin" ? "bg-stone-900 text-white" : "text-stone-500"}`}
           >
