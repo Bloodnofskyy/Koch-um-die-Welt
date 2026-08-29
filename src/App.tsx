@@ -198,6 +198,51 @@ async function saveCloudState(state) {
   if (error) throw error;
 }
 
+async function loadNormalizedContent() {
+  const [{ data: recipeRows, error: recipeError }, { data: ingredientRows, error: ingredientError }, { data: ratingRows, error: ratingError }, { data: suggestionRows, error: suggestionError }] = await Promise.all([
+    supabase.from("weltkochen_recipes").select("*").order("created_at", { ascending: true }),
+    supabase.from("weltkochen_ingredients").select("*").order("position", { ascending: true }),
+    supabase.from("weltkochen_ratings").select("recipe_id,user_id,rating"),
+    supabase.from("weltkochen_suggestions").select("id,country,suggestion,creator_id,created_at").order("created_at", { ascending: true }),
+  ]);
+  if (recipeError) throw recipeError;
+  if (ingredientError) throw ingredientError;
+  if (ratingError) throw ratingError;
+  if (suggestionError) throw suggestionError;
+
+  const profileIds = [...new Set((ratingRows || []).map((row) => row.user_id).filter(Boolean))];
+  let usernamesById = {};
+  if (profileIds.length) {
+    const { data: profiles, error: profileError } = await supabase.from("weltkochen_profiles").select("id,username").in("id", profileIds);
+    if (profileError) throw profileError;
+    usernamesById = Object.fromEntries((profiles || []).map((profile) => [profile.id, profile.username]));
+  }
+
+  const ingredientsByRecipe = {};
+  for (const row of ingredientRows || []) {
+    (ingredientsByRecipe[row.recipe_id] ||= []).push({ amount: row.amount == null ? "" : Number(row.amount), unit: row.unit || "", name: row.name || "" });
+  }
+  const ratingsByRecipe = {};
+  for (const row of ratingRows || []) {
+    const username = usernamesById[row.user_id];
+    if (username) (ratingsByRecipe[row.recipe_id] ||= {})[username] = Number(row.rating);
+  }
+
+  const recipes = {};
+  for (const row of recipeRows || []) {
+    (recipes[row.country] ||= []).push({
+      id: row.id, dish: row.dish, category: row.category || "Hauptgericht", sourceUrl: row.source_url || "",
+      servings: Number(row.servings) || 4, ingredients: ingredientsByRecipe[row.id] || [], recipe: row.instructions || "",
+      notes: row.notes || "", image: row.image_url || "", createdBy: row.creator_username || "",
+      createdByName: row.creator_name || row.creator_username || "", createdAt: row.created_at,
+      creatorId: row.creator_id, ratings: ratingsByRecipe[row.id] || {},
+    });
+  }
+  const suggestions = {};
+  for (const row of suggestionRows || []) (suggestions[row.country] ||= []).push(row.suggestion);
+  return { recipes, suggestions };
+}
+
 async function getMyProfile() {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
@@ -908,7 +953,7 @@ function RegionCountryPicker({ regionRows, collapsedRegions, toggleRegion, recip
   );
 }
 
-function AdminPanel({ settings, onUpdateSettings }) {
+function AdminPanel({ settings, onUpdateSettings, onExportBackup }) {
   const [requiredRecipes, setRequiredRecipes] = useState(String(settings.requiredRecipesPerCountry));
   const [minAverageRating, setMinAverageRating] = useState(String(settings.minAverageRatingForCompletion));
   const [inviteCodes, setInviteCodes] = useState([]);
@@ -1057,6 +1102,18 @@ function AdminPanel({ settings, onUpdateSettings }) {
   return (
     <main className="mx-auto max-w-4xl px-5 py-8">
       <div className="space-y-6">
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-2xl font-black">Datensicherung</h3>
+              <p className="mt-1 text-sm text-stone-600">Alle Rezepte, Zutaten, Bewertungen, Vorschläge und Einstellungen als JSON sichern.</p>
+            </div>
+            <Button type="button" onClick={onExportBackup} className="rounded-xl bg-stone-900 text-white">
+              Backup herunterladen
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="p-6">
             <h2 className="text-4xl font-black">Admin-Bereich</h2>
@@ -1333,13 +1390,14 @@ export default function WeltkochenApp() {
     let cancelled = false;
     async function boot() {
       try {
-        const cloud = await loadCloudState();
         const { data: { session } } = await supabase.auth.getSession();
-        if (session && !cancelled) setCurrentUser(await getMyProfile());
-        if (!cancelled && cloud) {
-          setSettings(cloud.settings);
-          setRecipes(cloud.recipes);
-          setSuggestions(cloud.suggestions);
+        const cloud = await loadCloudState();
+        if (!cancelled && cloud) setSettings(cloud.settings);
+        if (session && !cancelled) {
+          const profile = await getMyProfile();
+          setCurrentUser(profile);
+          const content = await loadNormalizedContent();
+          if (!cancelled) { setRecipes(content.recipes); setSuggestions(content.suggestions); }
         }
       } catch (error) {
         if (!cancelled) setStorageError(error instanceof Error ? error.message : "Online-Speicher konnte nicht geladen werden.");
@@ -1352,20 +1410,8 @@ export default function WeltkochenApp() {
   }, []);
 
   useEffect(() => {
-    saveRecipes("global", recipes);
     saveSettings(settings);
-    saveSuggestions("global", suggestions);
-    if (!cloudLoaded || !ONLINE_STORAGE_ENABLED) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      saveCloudState({ settings, recipes, suggestions }).catch((error) => {
-        setStorageError(error instanceof Error ? error.message : "Online-Speichern fehlgeschlagen.");
-      });
-    }, 500);
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [settings, recipes, suggestions, cloudLoaded]);
+  }, [settings]);
 
   useEffect(() => {
     setEditingRecipeId(null);
@@ -1396,7 +1442,17 @@ export default function WeltkochenApp() {
     return <div className="grid min-h-screen place-items-center bg-[#f7edda] p-6 text-center text-stone-800"><div><ChefHat className="mx-auto mb-4 h-12 w-12" /><h1 className="text-3xl font-black">Lade Online-Daten...</h1></div></div>;
   }
 
-  if (!currentUser) return <AuthScreen onLogin={(user) => { setCurrentUser(user); setPage(user?.role === "admin" ? "admin" : "karte"); }} storageError={storageError} />;
+  if (!currentUser) return <AuthScreen onLogin={async (user) => {
+    setCurrentUser(user);
+    try {
+      const content = await loadNormalizedContent();
+      setRecipes(content.recipes);
+      setSuggestions(content.suggestions);
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Rezepte konnten nicht geladen werden.");
+    }
+    setPage(user?.role === "admin" ? "admin" : "karte");
+  }} storageError={storageError} />;
 
   async function logout() {
     await supabase.auth.signOut();
@@ -1407,7 +1463,7 @@ export default function WeltkochenApp() {
   async function updateSettings(nextSettings) {
     setSettings(nextSettings);
     saveSettings(nextSettings);
-    if (ONLINE_STORAGE_ENABLED) await saveCloudState({ settings: nextSettings, recipes, suggestions });
+    if (ONLINE_STORAGE_ENABLED) await saveCloudState({ settings: nextSettings });
   }
 
   function openRecipe(recipe, country) {
@@ -1427,8 +1483,13 @@ export default function WeltkochenApp() {
         setImageError("Bitte wähle eine Bilddatei aus.");
         return;
       }
-      const image = await readImageFileAsDataUrl(file);
-      setForm((current) => ({ ...current, image }));
+      if (file.size > 10 * 1024 * 1024) throw new Error("Das Bild darf maximal 10 MB groß sein.");
+      const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(16).slice(2)}.${extension || "jpg"}`;
+      const { error: uploadError } = await supabase.storage.from("recipe-images").upload(path, file, { cacheControl: "3600", upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: publicData } = supabase.storage.from("recipe-images").getPublicUrl(path);
+      setForm((current) => ({ ...current, image: publicData.publicUrl }));
     } catch (error) {
       setImageError(error instanceof Error ? error.message : "Bild konnte nicht hochgeladen werden.");
     } finally {
@@ -1518,71 +1579,64 @@ export default function WeltkochenApp() {
     });
   }
 
-  function saveRecipe() {
+  async function saveRecipe() {
     if (!form.dish.trim()) return;
-    setRecipes((prev) => {
-      const list = Array.isArray(prev[selected]) ? prev[selected] : [];
-      if (editingRecipeId) {
-        return {
-          ...prev,
-          [selected]: list.map((recipe) => recipe.id === editingRecipeId ? {
-            ...recipe,
-            ...form,
-            sourceUrl: form.sourceUrl || "",
-            servings: Math.max(1, Number(form.servings) || 4),
-            ingredients: cleanIngredientRows(form.ingredients),
-            image: form.image || "",
-          } : recipe),
-        };
+    setStorageError("");
+    const ingredients = cleanIngredientRows(form.ingredients);
+    const recipeId = editingRecipeId || `${selected}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const existing = editingRecipeId ? (Array.isArray(recipes[selected]) ? recipes[selected] : []).find((recipe) => recipe.id === editingRecipeId) : null;
+    const row = {
+      id: recipeId, country: selected, dish: form.dish.trim(), category: form.category || "Hauptgericht",
+      source_url: form.sourceUrl || "", servings: Math.max(1, Number(form.servings) || 4),
+      instructions: form.recipe || "", notes: form.notes || "", image_url: form.image || "",
+      creator_id: existing?.creatorId || currentUser.id, creator_username: existing?.createdBy || currentUser.username,
+      creator_name: existing?.createdByName || currentUser.displayName, updated_at: new Date().toISOString(),
+    };
+    try {
+      const { error: recipeError } = await supabase.from("weltkochen_recipes").upsert(row);
+      if (recipeError) throw recipeError;
+      const { error: deleteError } = await supabase.from("weltkochen_ingredients").delete().eq("recipe_id", recipeId);
+      if (deleteError) throw deleteError;
+      if (ingredients.length) {
+        const { error: ingredientError } = await supabase.from("weltkochen_ingredients").insert(
+          ingredients.map((item, position) => ({ recipe_id: recipeId, position, amount: item.amount === "" ? null : Number(item.amount), unit: item.unit || "", name: item.name }))
+        );
+        if (ingredientError) throw ingredientError;
       }
-      const newRecipe = {
-        id: `${selected}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        dish: form.dish,
-        category: form.category || "Hauptgericht",
-        sourceUrl: form.sourceUrl || "",
-        servings: Math.max(1, Number(form.servings) || 4),
-        ingredients: cleanIngredientRows(form.ingredients),
-        recipe: form.recipe,
-        notes: form.notes,
-        image: form.image || "",
-        createdBy: currentUser.username,
-        createdByName: currentUser.displayName,
-        createdAt: new Date().toISOString(),
-        ratings: {},
-      };
-      return { ...prev, [selected]: [...list, newRecipe] };
-    });
-    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-    setImageError("");
-    setEditingRecipeId(null);
+      const content = await loadNormalizedContent();
+      setRecipes(content.recipes); setSuggestions(content.suggestions);
+      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+      setImageError(""); setEditingRecipeId(null);
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gespeichert werden.");
+    }
   }
 
-  function clearRecipe() {
+  async function clearRecipe() {
     if (!editingRecipeId) {
       setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-      setImageError("");
-      return;
+      setImageError(""); return;
     }
-    setRecipes((prev) => {
-      const nextList = (Array.isArray(prev[selected]) ? prev[selected] : []).filter((recipe) => recipe.id !== editingRecipeId);
-      const copy = { ...prev, [selected]: nextList };
-      if (!nextList.length) delete copy[selected];
-      return copy;
-    });
-    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
-    setImageError("");
-    setEditingRecipeId(null);
+    try {
+      const { error } = await supabase.from("weltkochen_recipes").delete().eq("id", editingRecipeId);
+      if (error) throw error;
+      const content = await loadNormalizedContent();
+      setRecipes(content.recipes); setSuggestions(content.suggestions);
+      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+      setImageError(""); setEditingRecipeId(null);
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gelöscht werden."); }
   }
 
-  function setRating(country, recipeId, rating) {
-    setRecipes((prev) => {
-      const list = Array.isArray(prev[country]) ? prev[country] : [];
-      return {
-        ...prev,
-        [country]: list.map((recipe) => recipe.id === recipeId ? { ...recipe, ratings: { ...(recipe.ratings || {}), [currentUser.username]: rating } } : recipe),
-      };
-    });
-    setOpenedRecipe((current) => current?.id === recipeId ? { ...current, ratings: { ...(current.ratings || {}), [currentUser.username]: rating } } : current);
+  async function setRating(country, recipeId, rating) {
+    try {
+      const { error } = await supabase.from("weltkochen_ratings").upsert({ recipe_id: recipeId, user_id: currentUser.id, rating, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setRecipes((prev) => {
+        const list = Array.isArray(prev[country]) ? prev[country] : [];
+        return { ...prev, [country]: list.map((recipe) => recipe.id === recipeId ? { ...recipe, ratings: { ...(recipe.ratings || {}), [currentUser.username]: rating } } : recipe) };
+      });
+      setOpenedRecipe((current) => current?.id === recipeId ? { ...current, ratings: { ...(current.ratings || {}), [currentUser.username]: rating } } : current);
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "Bewertung konnte nicht gespeichert werden."); }
   }
 
   function editRecipe(recipe) {
@@ -1603,32 +1657,35 @@ export default function WeltkochenApp() {
     setPage("details");
   }
 
-  function addSuggestion() {
-    const clean = suggestionText.trim();
-    if (!clean) return;
-    setSuggestions((prev) => ({
-      ...prev,
-      [selected]: [...(Array.isArray(prev[selected]) ? prev[selected] : []), clean],
-    }));
-    setSuggestionText("");
-    setSuggestionDialogOpen(false);
+  async function addSuggestion() {
+    const clean = suggestionText.trim(); if (!clean) return;
+    try {
+      const { error } = await supabase.from("weltkochen_suggestions").insert({ country: selected, suggestion: clean, creator_id: currentUser.id });
+      if (error) throw error;
+      const content = await loadNormalizedContent(); setSuggestions(content.suggestions);
+      setSuggestionText(""); setSuggestionDialogOpen(false);
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "Vorschlag konnte nicht gespeichert werden."); }
   }
 
-  function removeSuggestion(country, indexToRemove) {
-    setSuggestions((prev) => {
-      const nextList = (Array.isArray(prev[country]) ? prev[country] : []).filter((_, index) => index !== indexToRemove);
-      const copy = { ...prev, [country]: nextList };
-      if (!nextList.length) delete copy[country];
-      return copy;
-    });
-    setOpenedSuggestion(null);
+  async function removeSuggestion(country, indexToRemove) {
+    const suggestion = (Array.isArray(suggestions[country]) ? suggestions[country] : [])[indexToRemove];
+    if (!suggestion) return;
+    try {
+      const { data: rows, error: findError } = await supabase.from("weltkochen_suggestions").select("id").eq("country", country).eq("suggestion", suggestion).limit(1);
+      if (findError) throw findError;
+      if (rows?.[0]?.id) {
+        const { error: deleteError } = await supabase.from("weltkochen_suggestions").delete().eq("id", rows[0].id);
+        if (deleteError) throw deleteError;
+      }
+      const content = await loadNormalizedContent(); setSuggestions(content.suggestions); setOpenedSuggestion(null);
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "Vorschlag konnte nicht gelöscht werden."); }
   }
 
   function openSuggestion(country, suggestion, index) {
     setOpenedSuggestion({ country, suggestion, index });
   }
 
-  function convertSuggestionToRecipe() {
+  async function convertSuggestionToRecipe() {
     if (!openedSuggestion) return;
     setSelected(openedSuggestion.country);
     setForm({
@@ -1643,8 +1700,20 @@ export default function WeltkochenApp() {
     });
     setImageError("");
     setEditingRecipeId(null);
-    removeSuggestion(openedSuggestion.country, openedSuggestion.index);
+    await removeSuggestion(openedSuggestion.country, openedSuggestion.index);
     setPage("details");
+  }
+
+  async function exportBackup() {
+    try {
+      const content = await loadNormalizedContent();
+      const payload = { exportedAt: new Date().toISOString(), version: 2, settings, recipes: content.recipes, suggestions: content.suggestions };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url;
+      a.download = `koch-dich-um-die-welt-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch (error) { setStorageError(error instanceof Error ? error.message : "Backup konnte nicht erstellt werden."); }
   }
 
   function toggleRegion(regionName) {
@@ -1691,7 +1760,7 @@ export default function WeltkochenApp() {
       </header>
 
       {page === "admin" && currentUser.role === "admin" ? (
-        <AdminPanel settings={settings} onUpdateSettings={updateSettings} />
+        <AdminPanel settings={settings} onUpdateSettings={updateSettings} onExportBackup={exportBackup} />
       ) : page === "karte" ? (
         <main className="mx-auto grid max-w-[1600px] gap-6 px-5 py-8 lg:grid-cols-[1.65fr_.85fr]">
           <section className="space-y-5">
