@@ -1756,10 +1756,10 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
           <p className="mt-2 max-w-2xl text-sm text-stone-300">Benutzer, Inhalte, Papierkorb, Regeln und Aktivitäten an einem Ort.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Aktive Benutzer</p><p className="mt-1 text-3xl font-black">{adminStats.users}</p></div>
-          <div className="rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Rezepte</p><p className="mt-1 text-3xl font-black">{adminStats.recipes}</p></div>
-          <div className="rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Im Papierkorb</p><p className="mt-1 text-3xl font-black">{adminStats.deleted}</p></div>
-          <div className="rounded-2xl border border-stone-200 bg-white/95 p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Vorschläge</p><p className="mt-1 text-3xl font-black">{adminStats.suggestions}</p></div>
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Aktive Benutzer</p><p className="mt-1 text-3xl font-black">{adminStats.users}</p></div>
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Rezepte</p><p className="mt-1 text-3xl font-black">{adminStats.recipes}</p></div>
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Im Papierkorb</p><p className="mt-1 text-3xl font-black">{adminStats.deleted}</p></div>
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-stone-500">Vorschläge</p><p className="mt-1 text-3xl font-black">{adminStats.suggestions}</p></div>
         </div>
 
         <Card className="border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)]">
@@ -1846,7 +1846,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
         </Card>
 
         <details  className="group">
-          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white/95 px-5 py-4 font-black shadow-sm transition hover:bg-white">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white px-5 py-4 font-black shadow-sm transition hover:bg-white">
             Gelöschte Rezepte <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
           </summary>
         <Card className="border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)]">
@@ -1940,7 +1940,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
         </details>
 
         <details  className="group">
-          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white/95 px-5 py-4 font-black shadow-sm transition hover:bg-white">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white px-5 py-4 font-black shadow-sm transition hover:bg-white">
             Admin-Bereich <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
           </summary>
         <Card className="border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)]">
@@ -1985,7 +1985,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
         </details>
 
         <details open className="group">
-          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white/95 px-5 py-4 font-black shadow-sm transition hover:bg-white">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white px-5 py-4 font-black shadow-sm transition hover:bg-white">
             Benutzerverwaltung <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
           </summary>
         <Card className="border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)]">
@@ -2112,7 +2112,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
         </details>
 
         <details  className="group">
-          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white/95 px-5 py-4 font-black shadow-sm transition hover:bg-white">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border border-stone-200 bg-white px-5 py-4 font-black shadow-sm transition hover:bg-white">
             Einladungscodes <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
           </summary>
         <Card className="border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)]">
@@ -3233,7 +3233,7 @@ export default function WeltkochenApp() {
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-stone-200 bg-white/95 shadow-sm shadow-[0_8px_24px_rgba(70,50,30,.12)] md:h-16 md:w-16"><ChefHat className="h-6 w-6 md:h-8 md:w-8" /></div>
+            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-stone-200 bg-white shadow-sm shadow-[0_8px_24px_rgba(70,50,30,.12)] md:h-16 md:w-16"><ChefHat className="h-6 w-6 md:h-8 md:w-8" /></div>
             <div>
               <h1 className="text-lg font-black tracking-tight sm:text-2xl md:text-3xl">Koch dich um die Welt</h1>
               <p className="hidden text-stone-600 sm:block">Mehrere Rezepte pro Land · Bewertungen pro Benutzer</p>
@@ -3252,7 +3252,7 @@ export default function WeltkochenApp() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-2xl border border-stone-200 bg-white/95 shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
+            <div className="hidden rounded-2xl border border-stone-200 bg-white shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
             <Button onClick={logout} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-4 py-6 text-stone-800 hover:bg-stone-100">Abmelden</Button>
           </div>
         </div>
@@ -3348,7 +3348,7 @@ export default function WeltkochenApp() {
                     }
                   }}
                   placeholder="Welches Land möchtest du entdecken?"
-                  className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-12 pr-4 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                  className="w-full rounded-2xl border border-stone-200 bg-white py-3.5 pl-12 pr-4 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                 />
                 {query.trim() && filteredCountries.length > 0 && query !== selected && (
                   <div className="absolute left-0 right-0 top-[calc(100%+6px)] max-h-64 overflow-auto rounded-2xl border-2 border-stone-300 bg-white p-2 shadow-xl">
@@ -3365,7 +3365,7 @@ export default function WeltkochenApp() {
                   </div>
                 )}
               </div>
-              <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)} className="rounded-2xl border border-stone-200 bg-white/95 px-4 py-3.5 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100">
+              <select value={selectedRegion} onChange={(event) => setSelectedRegion(event.target.value)} className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 font-semibold shadow-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100">
                 <option>Alle Kontinente</option>
                 {regionRows.map((region) => <option key={region.name}>{region.name}</option>)}
               </select>
@@ -4168,8 +4168,13 @@ export default function WeltkochenApp() {
       )}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-[110] isolate border-t border-stone-200 bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.12)] md:hidden"
-        style={{ WebkitBackdropFilter: "none", backdropFilter: "none", transform: "translateZ(0)" }}
+        className="fixed left-0 right-0 z-[110] border-t border-stone-200 bg-[#fffaf0] px-2 pt-2 md:hidden"
+        style={{
+          bottom: 0,
+          paddingBottom: "max(.55rem, env(safe-area-inset-bottom))",
+          WebkitBackdropFilter: "none",
+          backdropFilter: "none",
+        }}
       >
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
