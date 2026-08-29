@@ -395,34 +395,89 @@ function ingredientCategory(name) {
   return "Sonstiges";
 }
 
+function normalizeIngredientName(name) {
+  return String(name || "")
+    .trim()
+    .toLocaleLowerCase("de-DE")
+    .replace(/\s+/g, " ");
+}
+
+function unitFamily(unit) {
+  const value = String(unit || "").trim().toLocaleLowerCase("de-DE");
+  if (["kg", "kilogramm", "kilogram", "g", "gramm", "gram"].includes(value)) return "weight";
+  if (["l", "liter", "dl", "cl", "ml", "milliliter"].includes(value)) return "volume";
+  if (["stück", "stk", "st"].includes(value)) return "piece";
+  return value || "none";
+}
+
+function convertToBaseUnit(amount, unit) {
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) return null;
+  const value = String(unit || "").trim().toLocaleLowerCase("de-DE");
+
+  if (["kg", "kilogramm", "kilogram"].includes(value)) return { amount: numeric * 1000, unit: "g" };
+  if (["g", "gramm", "gram"].includes(value)) return { amount: numeric, unit: "g" };
+  if (["l", "liter"].includes(value)) return { amount: numeric * 1000, unit: "ml" };
+  if (value === "dl") return { amount: numeric * 100, unit: "ml" };
+  if (value === "cl") return { amount: numeric * 10, unit: "ml" };
+  if (["ml", "milliliter"].includes(value)) return { amount: numeric, unit: "ml" };
+  if (["stück", "stk", "st"].includes(value)) return { amount: numeric, unit: "Stück" };
+
+  return { amount: numeric, unit: String(unit || "").trim() };
+}
+
+function prettifyCombinedAmount(amount, unit) {
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) return { amount, unit };
+  if (unit === "g" && numeric >= 1000) return { amount: numeric / 1000, unit: "kg" };
+  if (unit === "ml" && numeric >= 1000) return { amount: numeric / 1000, unit: "l" };
+  return { amount: numeric, unit };
+}
+
 function normalizeShoppingKey(item) {
-  return `${String(item.name || "").trim().toLocaleLowerCase("de-DE")}__${String(item.unit || "").trim().toLocaleLowerCase("de-DE")}`;
+  return `${normalizeIngredientName(item.name)}__${unitFamily(item.unit)}`;
 }
 
 function combineShoppingItems(items) {
   const map = new Map();
+
   for (const item of items) {
     const key = normalizeShoppingKey(item);
+    const converted = item.amount === "" || item.amount == null
+      ? null
+      : convertToBaseUnit(item.amount, item.unit);
+
     if (!map.has(key)) {
       map.set(key, {
         ...item,
+        amount: converted ? converted.amount : item.amount,
+        unit: converted ? converted.unit : item.unit,
         ids: [item.id],
         recipeNames: item.recipeName ? [item.recipeName] : [],
         category: ingredientCategory(item.name),
       });
       continue;
     }
+
     const current = map.get(key);
     current.ids.push(item.id);
     if (item.recipeName && !current.recipeNames.includes(item.recipeName)) current.recipeNames.push(item.recipeName);
-    if (current.amount === "" || current.amount == null || item.amount === "" || item.amount == null) {
-      current.amount = current.amount === "" || current.amount == null ? item.amount : current.amount;
-    } else {
-      current.amount = Number(current.amount) + Number(item.amount);
+
+    if (converted && current.amount !== "" && current.amount != null) {
+      current.amount = Number(current.amount) + Number(converted.amount);
+      current.unit = converted.unit;
+    } else if ((current.amount === "" || current.amount == null) && converted) {
+      current.amount = converted.amount;
+      current.unit = converted.unit;
     }
+
     current.checked = current.checked && item.checked;
   }
-  return [...map.values()];
+
+  return [...map.values()].map((item) => {
+    const pretty = prettifyCombinedAmount(item.amount, item.unit);
+    return { ...item, amount: pretty.amount, unit: pretty.unit };
+  });
 }
 
 function formatIngredientAmount(value) {
@@ -1210,6 +1265,8 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   const [adminStats, setAdminStats] = useState({ users: 0, recipes: 0, deleted: 0, suggestions: 0 });
   const [activities, setActivities] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [activityUserFilter, setActivityUserFilter] = useState("all");
+  const [activityActionFilter, setActivityActionFilter] = useState("all");
 
   useEffect(() => {
     loadInviteCodes();
@@ -1514,6 +1571,23 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
     });
   }
 
+  const activityUsers = useMemo(() => {
+    const unique = new Map();
+    for (const item of activities) {
+      const id = String(item.user_id || "");
+      if (!unique.has(id)) unique.set(id, item.userName || "System");
+    }
+    return [...unique.entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), "de"));
+  }, [activities]);
+
+  const filteredActivities = useMemo(() => {
+    return activities.filter((item) => {
+      const userMatches = activityUserFilter === "all" || String(item.user_id || "") === activityUserFilter;
+      const actionMatches = activityActionFilter === "all" || item.action === activityActionFilter;
+      return userMatches && actionMatches;
+    });
+  }, [activities, activityUserFilter, activityActionFilter]);
+
   return (
     <main className="mx-auto max-w-4xl px-5 py-8">
       <div className="space-y-6">
@@ -1536,12 +1610,34 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
               </Button>
             </div>
 
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="mb-1 block text-xs font-black uppercase tracking-wide text-stone-500">Benutzer</span>
+                <select value={activityUserFilter} onChange={(event) => setActivityUserFilter(event.target.value)} className="w-full rounded-xl border border-stone-300 bg-white p-3">
+                  <option value="all">Alle Benutzer</option>
+                  {activityUsers.map(([id, name]) => <option key={id || "system"} value={id}>{name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className="mb-1 block text-xs font-black uppercase tracking-wide text-stone-500">Aktion</span>
+                <select value={activityActionFilter} onChange={(event) => setActivityActionFilter(event.target.value)} className="w-full rounded-xl border border-stone-300 bg-white p-3">
+                  <option value="all">Alle Aktionen</option>
+                  <option value="recipe_created">Rezept erstellt</option>
+                  <option value="recipe_updated">Rezept bearbeitet</option>
+                  <option value="recipe_deleted">Rezept gelöscht</option>
+                  <option value="recipe_restored">Rezept wiederhergestellt</option>
+                  <option value="recipe_final_deleted">Rezept endgültig gelöscht</option>
+                  <option value="recipe_rated">Rezept bewertet</option>
+                </select>
+              </label>
+            </div>
+
             <div className="mt-4 max-h-96 overflow-auto rounded-2xl border border-stone-200 bg-white">
               {activityLoading ? (
                 <p className="p-4 text-stone-500">Aktivitäten werden geladen...</p>
-              ) : activities.length ? (
+              ) : filteredActivities.length ? (
                 <div className="divide-y divide-stone-200">
-                  {activities.map((item) => {
+                  {filteredActivities.map((item) => {
                     const actionNames = {
                       recipe_created: "Rezept erstellt",
                       recipe_updated: "Rezept bearbeitet",
@@ -1567,7 +1663,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
                   })}
                 </div>
               ) : (
-                <p className="p-4 text-stone-500">Noch keine Aktivitäten vorhanden.</p>
+                <p className="p-4 text-stone-500">Keine Aktivitäten für diesen Filter gefunden.</p>
               )}
             </div>
           </CardContent>
