@@ -416,7 +416,7 @@ select {
     bottom: calc(8px + env(safe-area-inset-bottom)) !important;
     left: 8px !important;
     right: 8px !important;
-    z-index: 9999 !important;
+    z-index: 40 !important;
   }
 
   /* Der Statistikblock aus App.tsx:
@@ -615,5 +615,17 @@ select {
 
   #recipe-entry-card {
     padding-bottom: 36px !important;
+  }
+}
+
+
+/* ===== Modal vor Bottom-Navigation v5 ===== */
+@media (max-width: 767px) {
+  header nav {
+    z-index: 40 !important;
+  }
+
+  .fixed.inset-0.z-50 {
+    z-index: 100 !important;
   }
 }
