@@ -4199,8 +4199,6 @@ export default function WeltkochenApp() {
             )}
           </button>
         </div>
-        {currentUser.role === "admin" && (
-        )}
       </nav>
 
     </div>
