@@ -43,6 +43,34 @@ const COLOR_COMPLETED = "#86cc8a";
 const COLOR_DEFAULT = "#e8c9a1";
 const recipeCategories = ["Vorspeise", "Hauptgericht", "Dessert", "Beilage", "Snack", "Getränk", "Suppe", "Salat", "Gebäck", "Sonstiges"];
 
+const EMPTY_RECIPE_FORM = {
+  dish: "",
+  category: "Hauptgericht",
+  sourceUrl: "",
+  servings: 4,
+  ingredients: [{ amount: "", unit: "", name: "" }],
+  recipe: "",
+  notes: "",
+  image: "",
+};
+
+function recipeFormSignature(form) {
+  return JSON.stringify({
+    dish: String(form?.dish || ""),
+    category: String(form?.category || "Hauptgericht"),
+    sourceUrl: String(form?.sourceUrl || ""),
+    servings: Number(form?.servings) || 4,
+    ingredients: (Array.isArray(form?.ingredients) ? form.ingredients : []).map((item) => ({
+      amount: item?.amount === "" ? "" : Number(item?.amount),
+      unit: String(item?.unit || ""),
+      name: String(item?.name || ""),
+    })),
+    recipe: String(form?.recipe || ""),
+    notes: String(form?.notes || ""),
+    image: String(form?.image || ""),
+  });
+}
+
 const countries = [
   "Afghanistan", "Albanien", "Algerien", "Andorra", "Angola", "Antigua und Barbuda", "Argentinien", "Armenien", "Australien", "Aserbaidschan",
   "Bahamas", "Bahrain", "Bangladesch", "Barbados", "Belarus", "Belgien", "Belize", "Benin", "Bhutan", "Bolivien", "Bosnien und Herzegowina", "Botswana", "Brasilien", "Brunei", "Bulgarien", "Burkina Faso", "Burundi",
@@ -2096,7 +2124,8 @@ export default function WeltkochenApp() {
   const [query, setQuery] = useState("");
   const [focusCountry, setFocusCountry] = useState("");
   const [discoverMode, setDiscoverMode] = useState("random");
-  const [form, setForm] = useState({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+  const [form, setForm] = useState(EMPTY_RECIPE_FORM);
+  const [savedFormSignature, setSavedFormSignature] = useState(() => recipeFormSignature(EMPTY_RECIPE_FORM));
   const [suggestionText, setSuggestionText] = useState("");
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
   const [openedSuggestion, setOpenedSuggestion] = useState(null);
@@ -2121,6 +2150,38 @@ export default function WeltkochenApp() {
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+
+  const formIsDirty = useMemo(
+    () => recipeFormSignature(form) !== savedFormSignature,
+    [form, savedFormSignature],
+  );
+
+  function friendlyError(error, fallback) {
+    const text = String(error?.message || error || "").toLocaleLowerCase("de-DE");
+    if (text.includes("network") || text.includes("fetch")) return "Keine Verbindung zum Online-Speicher. Bitte prüfe deine Internetverbindung.";
+    if (text.includes("permission") || text.includes("policy") || text.includes("row-level")) return "Diese Aktion ist für dein Konto nicht freigegeben.";
+    if (text.includes("duplicate") || text.includes("unique")) return "Dieser Eintrag ist bereits vorhanden.";
+    if (text.includes("timeout")) return "Die Anfrage hat zu lange gedauert. Bitte versuche es erneut.";
+    return fallback;
+  }
+
+  function navigateTo(nextPage) {
+    if (page === "details" && nextPage !== "details" && formIsDirty) {
+      const leave = window.confirm("Du hast ungespeicherte Änderungen am Rezept. Trotzdem verlassen?");
+      if (!leave) return;
+    }
+    setPage(nextPage);
+  }
+
+  useEffect(() => {
+    const beforeUnload = (event) => {
+      if (!formIsDirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [formIsDirty]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2356,7 +2417,28 @@ export default function WeltkochenApp() {
   }
 
   if (!cloudLoaded) {
-    return <div className="grid min-h-screen place-items-center bg-[#f7edda] p-6 text-center text-stone-800"><div><ChefHat className="mx-auto mb-4 h-12 w-12" /><h1 className="text-3xl font-black">Lade Online-Daten...</h1></div></div>;
+    return (
+      <div className="min-h-screen bg-[#f7edda] p-5 text-stone-800">
+        <div className="mx-auto max-w-7xl animate-pulse">
+          <div className="flex items-center gap-4 border-b-2 border-stone-300 pb-5">
+            <div className="h-14 w-14 rounded-full bg-stone-200" />
+            <div className="space-y-2">
+              <div className="h-6 w-56 rounded bg-stone-200" />
+              <div className="h-4 w-72 max-w-full rounded bg-stone-200" />
+            </div>
+          </div>
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_.9fr]">
+            <div className="h-[58vh] rounded-[2rem] bg-stone-200" />
+            <div className="space-y-4">
+              <div className="h-14 rounded-2xl bg-stone-200" />
+              <div className="h-40 rounded-[2rem] bg-stone-200" />
+              <div className="h-48 rounded-[2rem] bg-stone-200" />
+            </div>
+          </div>
+          <p className="mt-5 text-center text-sm font-semibold text-stone-500">Online-Daten werden geladen…</p>
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) return <AuthScreen onLogin={async (user) => {
@@ -2751,10 +2833,11 @@ export default function WeltkochenApp() {
       }
       const content = await loadNormalizedContent();
       setRecipes(content.recipes); setSuggestions(content.suggestions);
-      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
+      setForm(EMPTY_RECIPE_FORM);
+      setSavedFormSignature(recipeFormSignature(EMPTY_RECIPE_FORM));
       setImageError(""); setEditingRecipeId(null);
     } catch (error) {
-      setStorageError(error instanceof Error ? error.message : "Rezept konnte nicht gespeichert werden.");
+      setStorageError(friendlyError(error, "Rezept konnte nicht gespeichert werden. Bitte versuche es erneut."));
     }
   }
 
@@ -2884,8 +2967,7 @@ export default function WeltkochenApp() {
   }
 
   function editRecipe(recipe) {
-    setEditingRecipeId(recipe.id);
-    setForm({
+    const nextForm = {
       dish: recipe.dish || "",
       category: recipe.category || "Hauptgericht",
       sourceUrl: recipe.sourceUrl || "",
@@ -2896,7 +2978,10 @@ export default function WeltkochenApp() {
       recipe: recipe.recipe || "",
       notes: recipe.notes || "",
       image: recipe.image || "",
-    });
+    };
+    setEditingRecipeId(recipe.id);
+    setForm(nextForm);
+    setSavedFormSignature(recipeFormSignature(nextForm));
     setImageError("");
     setPage("details");
   }
@@ -2917,7 +3002,7 @@ export default function WeltkochenApp() {
       if (error) throw error;
       const content = await loadNormalizedContent(); setSuggestions(content.suggestions);
       setSuggestionText(""); setSuggestionDialogOpen(false);
-    } catch (error) { setStorageError(error instanceof Error ? error.message : "Vorschlag konnte nicht gespeichert werden."); }
+    } catch (error) { setStorageError(friendlyError(error, "Vorschlag konnte nicht gespeichert werden.")); }
   }
 
   async function removeSuggestion(country, indexToRemove) {
@@ -2931,7 +3016,7 @@ export default function WeltkochenApp() {
         if (deleteError) throw deleteError;
       }
       const content = await loadNormalizedContent(); setSuggestions(content.suggestions); setOpenedSuggestion(null);
-    } catch (error) { setStorageError(error instanceof Error ? error.message : "Vorschlag konnte nicht gelöscht werden."); }
+    } catch (error) { setStorageError(friendlyError(error, "Vorschlag konnte nicht gelöscht werden.")); }
   }
 
   function openSuggestion(country, suggestion, index) {
@@ -2987,23 +3072,23 @@ export default function WeltkochenApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7edda] text-stone-900" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div className="min-h-screen bg-[#f7edda] pb-24 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <header className="border-b-2 border-stone-300 bg-[#fff8e9]/90 px-5 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <button onClick={() => setPage("karte")} className="flex items-center gap-4 text-left">
-            <div className="grid h-16 w-16 place-items-center rounded-full border-2 border-stone-800 bg-white shadow-sm"><ChefHat className="h-8 w-8" /></div>
+          <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
+            <div className="grid h-12 w-12 place-items-center md:h-16 md:w-16 rounded-full border-2 border-stone-800 bg-white shadow-sm"><ChefHat className="h-6 w-6 md:h-8 md:w-8" /></div>
             <div>
-              <h1 className="text-2xl font-black uppercase tracking-wide md:text-3xl">Koch dich um die Welt</h1>
-              <p className="text-stone-600">Mehrere Rezepte pro Land · Bewertungen pro Benutzer</p>
+              <h1 className="text-lg font-black uppercase tracking-wide sm:text-2xl md:text-3xl">Koch dich um die Welt</h1>
+              <p className="hidden text-stone-600 sm:block">Mehrere Rezepte pro Land · Bewertungen pro Benutzer</p>
             </div>
           </button>
 
-          <nav className="flex flex-wrap items-center gap-2 md:gap-6">
-            <button onClick={() => setPage("karte")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "karte" ? "border-stone-900" : "border-transparent"}`}><Globe2 size={20} /> Weltkarte</button>
-            <button onClick={() => setPage("details")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "details" ? "border-stone-900" : "border-transparent"}`}><BookOpen size={20} /> Rezept eintragen</button>
-            <button onClick={() => setPage("favoriten")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "favoriten" ? "border-stone-900" : "border-transparent"}`}><Heart size={20} /> Favoriten</button>
-            <button onClick={() => setPage("kochplan")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "kochplan" ? "border-stone-900" : "border-transparent"}`}><CalendarDays size={20} /> Kochplan</button>
-            {currentUser.role === "admin" && <button onClick={() => setPage("admin")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "admin" ? "border-stone-900" : "border-transparent"}`}><BarChart3 size={20} /> Admin</button>}
+          <nav className="hidden flex-wrap items-center gap-2 md:flex md:gap-6">
+            <button onClick={() => navigateTo("karte")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "karte" ? "border-stone-900" : "border-transparent"}`}><Globe2 size={20} /> Weltkarte</button>
+            <button onClick={() => navigateTo("details")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "details" ? "border-stone-900" : "border-transparent"}`}><BookOpen size={20} /> Rezept eintragen</button>
+            <button onClick={() => navigateTo("favoriten")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "favoriten" ? "border-stone-900" : "border-transparent"}`}><Heart size={20} /> Favoriten</button>
+            <button onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "kochplan" ? "border-stone-900" : "border-transparent"}`}><CalendarDays size={20} /> Kochplan</button>
+            {currentUser.role === "admin" && <button onClick={() => navigateTo("admin")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "admin" ? "border-stone-900" : "border-transparent"}`}><BarChart3 size={20} /> Admin</button>}
             <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 border-b-2 border-transparent px-3 py-2 font-semibold"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
@@ -3014,6 +3099,16 @@ export default function WeltkochenApp() {
           </div>
         </div>
       </header>
+
+      {storageError && currentUser && (
+        <div className="mx-auto mt-4 max-w-7xl px-5">
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
+            <span>{storageError}</span>
+            <button type="button" onClick={() => setStorageError("")} className="shrink-0 rounded-lg px-2 py-1 text-red-700 hover:bg-red-100">×</button>
+          </div>
+        </div>
+      )}
+
 
       {page === "admin" && currentUser.role === "admin" ? (
         <AdminPanel
@@ -3471,6 +3566,13 @@ export default function WeltkochenApp() {
             <aside id="recipe-entry-card" className="scroll-mt-4 lg:sticky lg:top-6 lg:self-start">
               <Card className="border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
                 <CardContent className="p-6">
+            {formIsDirty && (
+              <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <span>Ungespeicherte Änderungen</span>
+                <span className="text-xs font-medium text-amber-700">Beim Verlassen wirst du gewarnt.</span>
+              </div>
+            )}
+
                   <div className="mb-5 flex items-center justify-between gap-3"><div><p className="text-sm uppercase tracking-wide text-amber-700">Ausgewähltes Land</p><h2 className="text-3xl font-black">{selected}</h2><p className="text-sm text-stone-500">{getQualifiedRecipesCount(recipes[selected], settings.minAverageRatingForCompletion)} / {settings.requiredRecipesPerCountry} Rezepte über {settings.minAverageRatingForCompletion} Sterne</p></div>{isCountryCompleted(recipes[selected], settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion) && <CheckCircle2 className="h-9 w-9 text-emerald-500" />}</div>
                   <div className="space-y-4">
                     <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4">
@@ -3767,6 +3869,49 @@ export default function WeltkochenApp() {
           </div>
         </div>
       )}
+      <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-stone-300 bg-[#fff8e9]/95 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,.08)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          {[
+            ["karte", "Karte", Globe2],
+            ["details", "Rezept", BookOpen],
+            ["favoriten", "Favoriten", Heart],
+            ["kochplan", "Kochplan", CalendarDays],
+          ].map(([target, label, Icon]) => (
+            <button
+              key={target}
+              type="button"
+              onClick={() => navigateTo(target)}
+              className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold ${page === target ? "bg-amber-100 text-stone-950" : "text-stone-500"}`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setShoppingListOpen(true)}
+            className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <span>Einkauf</span>
+            {combinedShoppingItems.length > 0 && (
+              <span className="absolute right-2 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-stone-900 px-1 text-[10px] text-white">
+                {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+              </span>
+            )}
+          </button>
+        </div>
+        {currentUser.role === "admin" && (
+          <button
+            type="button"
+            onClick={() => navigateTo("admin")}
+            className={`mx-auto mt-1 block rounded-lg px-3 py-1 text-[11px] font-bold ${page === "admin" ? "bg-stone-900 text-white" : "text-stone-500"}`}
+          >
+            Admin
+          </button>
+        )}
+      </nav>
+
     </div>
   );
 }
