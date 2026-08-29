@@ -4156,11 +4156,11 @@ export default function WeltkochenApp() {
         <Sparkles className="h-5 w-5" />
       </button>
 
-      {isAdmin && (
+      {currentUser.role === "admin" && (
         <button
           type="button"
           onClick={() => navigateTo("admin")}
-          className="fixed bottom-[5.7rem] right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white/95 px-3 text-xs font-black text-stone-800 shadow-lg backdrop-blur md:hidden"
+          className="fixed bottom-[5.7rem] right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 text-xs font-black text-stone-800 shadow-lg md:hidden"
           title="Admin öffnen"
         >
           <BarChart3 className="h-4 w-4" /> Admin
