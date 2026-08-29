@@ -838,65 +838,148 @@ function AuthScreen({ onLogin, storageError }) {
 
       <div className="relative mx-auto grid min-h-screen max-w-[1500px] lg:grid-cols-[1.12fr_.88fr]">
         {/* Marken-/Motto-Seite */}
-        <section className="relative flex min-h-[46vh] flex-col justify-between overflow-hidden bg-stone-900 px-6 py-8 text-white sm:px-10 lg:min-h-screen lg:px-14 lg:py-12">
+        <section className="relative flex min-h-[46vh] flex-col overflow-hidden bg-stone-900 px-6 py-8 text-white sm:px-10 lg:min-h-screen lg:px-12 lg:py-10 xl:px-14">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-28 -top-24 h-80 w-80 rounded-full border border-white/10" />
             <div className="absolute -right-12 -top-6 h-52 w-52 rounded-full border border-white/10" />
-            <div className="absolute bottom-[-9rem] left-[-8rem] h-96 w-96 rounded-full bg-amber-400/15 blur-3xl" />
-            <div className="absolute right-[8%] top-[32%] h-40 w-40 rounded-full bg-sky-400/10 blur-3xl" />
+            <div className="absolute bottom-[-10rem] left-[-8rem] h-[28rem] w-[28rem] rounded-full bg-amber-400/16 blur-3xl" />
+            <div className="absolute left-[52%] top-[42%] h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
+            <div className="absolute inset-x-0 top-[62%] h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           </div>
 
-          <div className="relative z-10 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-stone-950 shadow-[0_10px_30px_rgba(251,191,36,.25)]">
-              <ChefHat className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-lg font-black tracking-tight">Koch dich um die Welt</p>
-              <p className="text-xs font-semibold text-stone-400">Die kulinarische Weltreise</p>
-            </div>
-          </div>
-
-          <div className="relative z-10 my-10 max-w-2xl lg:my-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-xs font-black uppercase tracking-[.14em] text-amber-300 backdrop-blur">
-              <Sparkles className="h-4 w-4" /> Kochen. Entdecken. Erinnern.
-            </div>
-            <h1 className="mt-5 text-4xl font-black leading-[.98] tracking-[-.04em] sm:text-5xl lg:text-6xl xl:text-7xl">
-              Die Welt passt
-              <span className="block text-amber-300">auf deinen Teller.</span>
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-stone-300 sm:text-lg">
-              Von Italien bis Japan, von Familienrezepten bis neuen Entdeckungen:
-              sammelt eure Gerichte und macht die Weltkarte gemeinsam grüner.
-            </p>
-
-            <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-                <Compass className="h-5 w-5 text-amber-300" />
-                <p className="mt-3 text-sm font-black">Länder entdecken</p>
-                <p className="mt-1 text-xs leading-5 text-stone-400">Rezept für Rezept um die Welt.</p>
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-stone-950 shadow-[0_10px_30px_rgba(251,191,36,.25)]">
+                <ChefHat className="h-6 w-6" />
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-                <UtensilsCrossed className="h-5 w-5 text-amber-300" />
-                <p className="mt-3 text-sm font-black">Gemeinsam kochen</p>
-                <p className="mt-1 text-xs leading-5 text-stone-400">Lieblingsrezepte sammeln & bewerten.</p>
+              <div>
+                <p className="text-lg font-black tracking-tight">Koch dich um die Welt</p>
+                <p className="text-xs font-semibold text-stone-400">Die kulinarische Weltreise</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-                <Globe2 className="h-5 w-5 text-amber-300" />
-                <p className="mt-3 text-sm font-black">Karte füllen</p>
-                <p className="mt-1 text-xs leading-5 text-stone-400">Jedes Gericht bringt euch weiter.</p>
-              </div>
+            </div>
+            <div className="hidden rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-stone-300 xl:block">
+              🌍 0 % Jetlag · 100 % Hunger
             </div>
           </div>
 
-          <div className="relative z-10 hidden items-center gap-3 text-xs font-semibold text-stone-500 lg:flex">
-            <span className="h-px w-10 bg-stone-700" />
+          <div className="relative z-10 mt-10 grid flex-1 content-center gap-7 xl:mt-6 xl:grid-cols-[1.05fr_.95fr] xl:items-center">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-xs font-black uppercase tracking-[.14em] text-amber-300 backdrop-blur">
+                <Sparkles className="h-4 w-4" /> Kochen. Entdecken. Erinnern.
+              </div>
+              <h1 className="mt-5 text-4xl font-black leading-[.96] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-[4.2rem]">
+                Die Welt passt
+                <span className="block text-amber-300">auf deinen Teller.</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-stone-300 sm:text-lg">
+                Ein bisschen Reisebüro, ein bisschen Familienkochbuch und ein bisschen
+                „Wer hat bitte schon wieder 5 Sterne gegeben?“
+              </p>
+
+              <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
+                  <Compass className="h-5 w-5 text-amber-300" />
+                  <p className="mt-3 text-sm font-black">Länder entdecken</p>
+                  <p className="mt-1 text-xs leading-5 text-stone-400">Von Pasta bis Plov. Hauptsache lecker.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
+                  <UtensilsCrossed className="h-5 w-5 text-amber-300" />
+                  <p className="mt-3 text-sm font-black">Gemeinsam kochen</p>
+                  <p className="mt-1 text-xs leading-5 text-stone-400">Rezepte sammeln. Diskussionen inklusive.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
+                  <Globe2 className="h-5 w-5 text-amber-300" />
+                  <p className="mt-3 text-sm font-black">Karte füllen</p>
+                  <p className="mt-1 text-xs leading-5 text-stone-400">Grün ist hier die leckerste Farbe.</p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2 text-xs font-black">
+                <span className="rounded-full bg-amber-300 px-3 py-1.5 text-stone-950">🍝 Italien? Pflichtprogramm.</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-stone-300">🌶️ Schärfe auf eigene Gefahr.</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-stone-300">⭐ 5 Sterne werden hart erkocht.</span>
+              </div>
+            </div>
+
+            <div className="relative hidden min-h-[430px] xl:block">
+              <div className="absolute left-4 top-8 w-[82%] rotate-[-5deg] rounded-[2rem] border border-white/10 bg-[#f7edda] p-5 text-stone-900 shadow-[0_24px_50px_rgba(0,0,0,.28)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-stone-500">Kulinarischer Reisepass</p>
+                    <p className="mt-1 text-2xl font-black tracking-tight">Heute schon woanders gegessen?</p>
+                  </div>
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-900 text-amber-300"><Globe2 className="h-5 w-5" /></div>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-white p-3 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Nächste Station</p>
+                    <p className="mt-1 font-black">Irgendwo mit Käse</p>
+                    <p className="mt-1 text-xs text-stone-500">Genaue Route wird noch gekocht.</p>
+                  </div>
+                  <div className="rounded-2xl bg-stone-900 p-3 text-white shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Reisebudget</p>
+                    <p className="mt-1 font-black text-amber-300">1 große Portion</p>
+                    <p className="mt-1 text-xs text-stone-400">Dessert separat verhandelbar.</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-dashed border-stone-300 p-3">
+                  <div>
+                    <p className="text-xs font-black">Stempel des Tages</p>
+                    <p className="text-[11px] text-stone-500">„Hat geschmeckt, darf bleiben.“</p>
+                  </div>
+                  <div className="rotate-[-8deg] rounded-full border-2 border-amber-500 px-3 py-2 text-[10px] font-black uppercase tracking-[.12em] text-amber-700">Genehmigt</div>
+                </div>
+              </div>
+
+              <div className="absolute bottom-10 right-0 w-[56%] rotate-[7deg] rounded-3xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_45px_rgba(0,0,0,.24)] backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Boarding Pass</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black">HOME</p>
+                    <p className="text-[10px] text-stone-400">Küche</p>
+                  </div>
+                  <Plane className="h-5 w-5 text-stone-400" />
+                  <div className="text-right">
+                    <p className="text-sm font-black">WORLD</p>
+                    <p className="text-[10px] text-stone-400">Teller</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="absolute bottom-0 left-8 rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-stone-950 shadow-lg">
+                Kein Visum nötig. Nur Appetit.
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-xs font-semibold text-stone-500">
             <span>Eine Reise ohne Koffer. Aber mit Hunger.</span>
+            <span className="hidden sm:inline">✈️ Nächster Halt: Küche.</span>
           </div>
         </section>
 
         {/* Login-Fenster */}
-        <section className="relative flex items-center justify-center px-4 py-7 sm:px-8 lg:px-12">
-          <div className="w-full max-w-xl">
+        <section className="relative flex items-center justify-center overflow-hidden px-4 py-7 sm:px-8 lg:px-10 xl:px-12">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-1/2 top-[14%] h-80 w-80 -translate-x-1/2 rounded-full bg-amber-300/25 blur-3xl" />
+            <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-sky-300/20 blur-3xl" />
+            <div className="absolute right-[10%] top-[9%] hidden rotate-[9deg] rounded-2xl border-2 border-dashed border-stone-500/10 px-5 py-3 text-center xl:block">
+              <p className="text-[9px] font-black uppercase tracking-[.22em] text-stone-500/35">Departure</p>
+              <p className="text-lg font-black text-stone-500/25">KÜCHE → WELT</p>
+            </div>
+          </div>
+          <div className="relative z-10 w-full max-w-xl">
+            <div className="mb-4 hidden items-center justify-between rounded-2xl border border-stone-200/80 bg-white/60 px-4 py-3 shadow-sm backdrop-blur lg:flex">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700"><Plane className="h-4 w-4" /></div>
+                <div>
+                  <p className="text-xs font-black text-stone-700">Boarding beginnt jetzt</p>
+                  <p className="text-[11px] text-stone-500">Ziel: irgendein Land mit gutem Essen.</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-stone-900 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">Gate Küche</span>
+            </div>
+
             <div className="mb-5 flex items-center justify-between px-1 lg:hidden">
               <div>
                 <p className="text-xs font-black uppercase tracking-[.14em] text-amber-700">Willkommen</p>
@@ -907,7 +990,7 @@ function AuthScreen({ onLogin, storageError }) {
 
             <form
               onSubmit={handleSubmit}
-              className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[#fffaf0]/90 p-5 shadow-[0_30px_80px_rgba(60,43,24,.18)] backdrop-blur-xl sm:p-7"
+              className="relative overflow-hidden rounded-[2rem] border border-white/90 bg-[#fffaf0]/95 p-5 shadow-[0_30px_80px_rgba(60,43,24,.20)] backdrop-blur-xl sm:p-7"
             >
               <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
 
@@ -1050,6 +1133,22 @@ function AuthScreen({ onLogin, storageError }) {
                       {storageError}
                     </div>
                   )}
+
+                  <div className="rounded-2xl border border-stone-200 bg-white/70 p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-lg">🍴</div>
+                      <div>
+                        <p className="text-xs font-black text-stone-700">
+                          {mode === "login" ? "Kleine Reisewarnung" : "Fast startklar"}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-5 text-stone-500">
+                          {mode === "login"
+                            ? "Nach dem Login kann spontaner Hunger auf internationale Küche auftreten."
+                            : "Einladungscode rein, Reisepass erstellen und schon gehört dir ein Platz am Tisch."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"
