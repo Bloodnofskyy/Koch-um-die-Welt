@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Graticule, ZoomableGroup } from "react-simple-maps";
 import { geoCentroid } from "d3-geo";
 import { motion } from "framer-motion";
 import {
@@ -28,7 +28,7 @@ const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, 
 const APP_STATE_ID = "weltkochen-global-state";
 const ONLINE_STORAGE_ENABLED = Boolean(supabase);
 
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 const DEFAULT_REQUIRED_RECIPES_PER_COUNTRY = 2;
 const DEFAULT_MIN_AVERAGE_RATING_FOR_COMPLETION = 4;
 const COLOR_SELECTED = "#1e3a8a";
@@ -738,11 +738,12 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
   }, [focusCountry]);
 
   function changeZoom(delta) {
-    setPosition((pos) => ({ ...pos, zoom: Math.min(8, Math.max(0.9, pos.zoom + delta)) }));
+    setPosition((pos) => ({ ...pos, zoom: Math.min(9, Math.max(0.9, pos.zoom + delta)) }));
   }
 
   function resetZoom() {
-    setPosition({ coordinates: regionZooms["Alle Kontinente"].center, zoom: regionZooms["Alle Kontinente"].zoom });
+    const config = regionZooms[selectedRegion] || regionZooms["Alle Kontinente"];
+    setPosition({ coordinates: config.center, zoom: config.zoom });
   }
 
   function handleMouseDown(event) {
@@ -759,53 +760,162 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
       setPosition({ coordinates: countryConfig.center, zoom: countryConfig.zoom });
       return;
     }
-    setPosition((current) => ({ ...current, coordinates: geoCentroid(geo), zoom: Math.max(current.zoom, 3.2) }));
+    setPosition((current) => ({
+      ...current,
+      coordinates: geoCentroid(geo),
+      zoom: Math.max(current.zoom, 3.4),
+    }));
   }
 
-  const recipeCountForHover = Array.isArray(recipes[hovered]) ? recipes[hovered].filter((recipe) => recipe?.dish?.trim()).length : 0;
+  const displayCountry = hovered || selected;
+  const displayRecipes = Array.isArray(recipes[displayCountry])
+    ? recipes[displayCountry].filter((recipe) => recipe?.dish?.trim())
+    : [];
+  const displayCompleted = isCountryCompleted(
+    recipes[displayCountry],
+    requiredRecipes,
+    minAverageRating
+  );
+  const displaySuggested = hasSuggestions(suggestions[displayCountry]);
 
   return (
-    <div onMouseDown={handleMouseDown} onAuxClick={(event) => event.preventDefault()} className="relative overflow-hidden rounded-[2rem] border-2 border-stone-300 bg-[#f8efd9] shadow-inner">
-      <div className="absolute left-8 top-8 z-10 rounded-2xl border-2 border-stone-300 bg-[#fff8e9]/90 p-5 text-center font-semibold text-stone-800 shadow-sm backdrop-blur">
-        <h2 className="text-3xl font-black tracking-tight">{hovered || selected}</h2>
-        <p className="mt-3 max-w-xs text-sm leading-relaxed">
-          {hovered ? `${recipeCountForHover} Rezept${recipeCountForHover === 1 ? "" : "e"} eingetragen` : "Klicke ein Land an, um rechts die Rezepte anzuzeigen."}
-        </p>
+    <div
+      onMouseDown={handleMouseDown}
+      onAuxClick={(event) => event.preventDefault()}
+      className="relative overflow-hidden rounded-[2rem] border border-stone-300 bg-[#dceef1] shadow-sm"
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-white/20 to-transparent" />
+
+      <div className="absolute left-4 top-4 z-20 max-w-[calc(100%-2rem)] rounded-2xl border border-white/70 bg-[#fffaf0]/95 px-4 py-3 shadow-md backdrop-blur md:left-6 md:top-6 md:px-5 md:py-4">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-stone-200 bg-white">
+            <MapPin className="h-5 w-5 text-stone-700" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-xl font-black tracking-tight md:text-2xl">{displayCountry}</h2>
+              {displayCompleted && (
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-black text-emerald-800">
+                  Abgeschlossen
+                </span>
+              )}
+              {!displayCompleted && displaySuggested && (
+                <span className="rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-black text-yellow-800">
+                  Vorschlag
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs font-medium text-stone-600 md:text-sm">
+              {displayRecipes.length
+                ? `${displayRecipes.length} Rezept${displayRecipes.length === 1 ? "" : "e"} eingetragen`
+                : "Noch kein Rezept eingetragen"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <ComposableMap projection="geoMercator" projectionConfig={{ scale: 190 }} className="h-[760px] w-full bg-[#dbeef2]">
-        <ZoomableGroup zoom={position.zoom} center={position.coordinates} onMoveEnd={(pos) => setPosition(pos)}>
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{ scale: 190 }}
+        className="h-[520px] w-full bg-[#dceef1] md:h-[680px] xl:h-[760px]"
+      >
+        <Graticule stroke="#a9c7cd" strokeWidth={0.35} />
+        <ZoomableGroup
+          zoom={position.zoom}
+          center={position.coordinates}
+          onMoveEnd={(pos) => setPosition(pos)}
+        >
           <Geographies geography={geoUrl}>
-            {({ geographies }) => geographies.map((geo) => {
-              const countryName = toGermanCountryName(geo.properties.name);
-              const isHovered = hovered === countryName;
-              const isSelected = selected === countryName;
-              const completed = isCountryCompleted(recipes[countryName], requiredRecipes, minAverageRating);
-              const suggested = hasSuggestions(suggestions[countryName]);
-              const fill = isHovered ? COLOR_HOVER : isSelected ? COLOR_SELECTED : completed ? COLOR_COMPLETED : suggested ? COLOR_SUGGESTION : COLOR_DEFAULT;
-              return (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  onMouseEnter={() => setHovered(countryName)}
-                  onMouseLeave={() => setHovered("")}
-                  onClick={() => handleCountryClick(countryName, geo)}
-                  style={{
-                    default: { fill, stroke: "#2f2a23", strokeWidth: isSelected || isHovered ? 1.8 : 0.8, outline: "none" },
-                    hover: { fill: COLOR_HOVER, stroke: "#1f1a14", strokeWidth: 1.8, outline: "none", cursor: "pointer" },
-                    pressed: { fill: "#d97706", outline: "none" },
-                  }}
-                />
-              );
-            })}
+            {({ geographies }) =>
+              geographies.map((geo) => {
+                const countryName = toGermanCountryName(geo.properties.name);
+                const isHovered = hovered === countryName;
+                const isSelected = selected === countryName;
+                const completed = isCountryCompleted(
+                  recipes[countryName],
+                  requiredRecipes,
+                  minAverageRating
+                );
+                const suggested = hasSuggestions(suggestions[countryName]);
+                const fill = isHovered
+                  ? "#b98763"
+                  : isSelected
+                    ? "#355b88"
+                    : completed
+                      ? "#8ecb94"
+                      : suggested
+                        ? "#f4dc69"
+                        : "#dfc29d";
+
+                return (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    onMouseEnter={() => setHovered(countryName)}
+                    onMouseLeave={() => setHovered("")}
+                    onClick={() => handleCountryClick(countryName, geo)}
+                    style={{
+                      default: {
+                        fill,
+                        stroke: isSelected ? "#203f61" : "#716554",
+                        strokeWidth: isSelected ? 1.25 : 0.45,
+                        outline: "none",
+                        transition: "fill 140ms ease, stroke-width 140ms ease",
+                      },
+                      hover: {
+                        fill: "#b98763",
+                        stroke: "#3b332a",
+                        strokeWidth: 1.05,
+                        outline: "none",
+                        cursor: "pointer",
+                      },
+                      pressed: {
+                        fill: "#c67a3d",
+                        stroke: "#3b332a",
+                        strokeWidth: 1.1,
+                        outline: "none",
+                      },
+                    }}
+                  />
+                );
+              })
+            }
           </Geographies>
         </ZoomableGroup>
       </ComposableMap>
 
-      <div className="absolute bottom-6 left-6 flex flex-col gap-2 rounded-2xl border border-stone-300 bg-[#fff8e9]/95 p-3 shadow-lg">
-        <button onClick={() => changeZoom(0.4)} className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-2xl font-black hover:bg-stone-100">+</button>
-        <button onClick={() => changeZoom(-0.4)} className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-2xl font-black hover:bg-stone-100">−</button>
-        <button onClick={resetZoom} className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold hover:bg-stone-100">Reset</button>
+      <div className="absolute bottom-4 left-4 z-20 flex items-center overflow-hidden rounded-2xl border border-stone-300 bg-[#fffaf0]/95 shadow-md backdrop-blur md:bottom-6 md:left-6">
+        <button
+          type="button"
+          onClick={() => changeZoom(0.45)}
+          className="grid h-11 w-11 place-items-center border-r border-stone-300 text-xl font-black hover:bg-white"
+          aria-label="Karte vergrößern"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => changeZoom(-0.45)}
+          className="grid h-11 w-11 place-items-center border-r border-stone-300 text-xl font-black hover:bg-white"
+          aria-label="Karte verkleinern"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={resetZoom}
+          className="h-11 px-3 text-xs font-black hover:bg-white"
+        >
+          Reset
+        </button>
+      </div>
+
+      <div className="absolute bottom-4 right-4 z-20 hidden rounded-2xl border border-stone-300 bg-[#fffaf0]/95 px-3 py-2 shadow-md backdrop-blur md:block">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-bold text-stone-600">
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#355b88]" /> Ausgewählt</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#8ecb94]" /> Abgeschlossen</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#f4dc69]" /> Vorschlag</span>
+        </div>
       </div>
     </div>
   );
