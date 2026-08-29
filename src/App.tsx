@@ -1907,6 +1907,8 @@ export default function WeltkochenApp() {
   const [planRecipeId, setPlanRecipeId] = useState("");
   const [planServings, setPlanServings] = useState(4);
   const [planNote, setPlanNote] = useState("");
+  const [planSearch, setPlanSearch] = useState("");
+  const [planSearchOpen, setPlanSearchOpen] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -2015,6 +2017,29 @@ export default function WeltkochenApp() {
   }
   const activeCountry = selected;
   const activeRecipes = Array.isArray(recipes[activeCountry]) ? recipes[activeCountry] : [];
+  const planRecipeMatches = useMemo(() => {
+    const clean = planSearch.trim().toLocaleLowerCase("de-DE");
+    if (!clean) return [];
+
+    return recipeEntries
+      .map(([country, recipe]) => {
+        const dish = String(recipe.dish || "").toLocaleLowerCase("de-DE");
+        const countryName = String(country || "").toLocaleLowerCase("de-DE");
+        const category = String(recipe.category || "").toLocaleLowerCase("de-DE");
+        let score = 10;
+        if (dish === clean) score = 0;
+        else if (countryName === clean) score = 1;
+        else if (dish.startsWith(clean)) score = 2;
+        else if (countryName.startsWith(clean)) score = 3;
+        else if (dish.includes(clean)) score = 4;
+        else if (countryName.includes(clean)) score = 5;
+        else if (category.includes(clean)) score = 6;
+        return { country, recipe, score };
+      })
+      .filter((entry) => entry.score < 10)
+      .sort((a, b) => a.score - b.score || a.recipe.dish.localeCompare(b.recipe.dish, "de"))
+      .slice(0, 10);
+  }, [recipeEntries, planSearch]);
   const visibleRecipes = useMemo(() => filterRecipesForTable(recipeEntries, query, activeCountry), [recipeEntries, query, activeCountry]);
 
   const topRecipeEntry = useMemo(() => {
@@ -2214,6 +2239,7 @@ export default function WeltkochenApp() {
 
   function openPlanForRecipe(recipe, servings) {
     setPlanRecipeId(recipe.id);
+    setPlanSearch(recipe.dish);
     setPlanServings(Math.max(1, Number(servings) || Number(recipe.servings) || 4));
     setPage("kochplan");
     setOpenedRecipe(null);
@@ -2234,6 +2260,9 @@ export default function WeltkochenApp() {
       return;
     }
     setPlanNote("");
+    setPlanSearch("");
+    setPlanRecipeId("");
+    setPlanSearchOpen(false);
     await loadMealPlan();
   }
 
@@ -2888,13 +2917,69 @@ export default function WeltkochenApp() {
                   <span className="mb-1 block text-sm font-semibold">Datum</span>
                   <input type="date" value={planDate} onChange={(event) => setPlanDate(event.target.value)} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3" />
                 </label>
-                <label>
-                  <span className="mb-1 block text-sm font-semibold">Rezept</span>
-                  <select value={planRecipeId} onChange={(event) => setPlanRecipeId(event.target.value)} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3">
-                    <option value="">Rezept auswählen...</option>
-                    {recipeEntries.map(([country, recipe]) => <option key={recipe.id} value={recipe.id}>{country} · {recipe.dish}</option>)}
-                  </select>
-                </label>
+
+                <div className="relative z-30">
+                  <span className="mb-1 block text-sm font-semibold">Rezept oder Land</span>
+                  <Search className="absolute left-4 top-[43px] h-5 w-5 text-stone-400" />
+                  <input
+                    value={planSearch}
+                    onFocus={() => setPlanSearchOpen(true)}
+                    onChange={(event) => {
+                      setPlanSearch(event.target.value);
+                      setPlanRecipeId("");
+                      setPlanSearchOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && planRecipeMatches[0]) {
+                        event.preventDefault();
+                        const first = planRecipeMatches[0];
+                        setPlanRecipeId(first.recipe.id);
+                        setPlanSearch(first.recipe.dish);
+                        setPlanServings(Number(first.recipe.servings) || 4);
+                        setPlanSearchOpen(false);
+                      }
+                    }}
+                    placeholder="z. B. Deutschland, Italien oder Lasagne..."
+                    autoComplete="off"
+                    className="w-full rounded-xl border-2 border-stone-300 bg-white py-3 pl-12 pr-4 outline-none focus:border-amber-500"
+                  />
+
+                  {planSearchOpen && planSearch.trim() && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] max-h-72 overflow-auto rounded-2xl border-2 border-stone-300 bg-white p-2 shadow-xl">
+                      {planRecipeMatches.length ? planRecipeMatches.map(({ country, recipe }) => (
+                        <button
+                          key={recipe.id}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setPlanRecipeId(recipe.id);
+                            setPlanSearch(recipe.dish);
+                            setPlanServings(Number(recipe.servings) || 4);
+                            setPlanSearchOpen(false);
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-amber-50"
+                        >
+                          {recipe.image ? (
+                            <img src={recipe.image} alt="" className="h-12 w-14 shrink-0 rounded-lg object-cover" />
+                          ) : (
+                            <div className="grid h-12 w-14 shrink-0 place-items-center rounded-lg bg-stone-100"><ChefHat className="h-5 w-5 text-stone-400" /></div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate font-black">{recipe.dish}</p>
+                            <p className="text-xs text-stone-500">{country} · {recipe.category || "Hauptgericht"} · Ø {getRecipeAverage(recipe)}</p>
+                          </div>
+                        </button>
+                      )) : (
+                        <p className="p-3 text-sm text-stone-500">Kein passendes Rezept gefunden.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {planRecipeId && (
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">✓ Rezept ausgewählt</p>
+                  )}
+                </div>
+
                 <label>
                   <span className="mb-1 block text-sm font-semibold">Personen</span>
                   <input type="number" min="1" max="100" value={planServings} onChange={(event) => setPlanServings(Math.max(1, Number(event.target.value) || 1))} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3" />
