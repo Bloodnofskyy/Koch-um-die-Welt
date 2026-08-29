@@ -2313,16 +2313,32 @@ export default function WeltkochenApp() {
 
   useEffect(() => {
     if (!currentUser?.id) return;
-    const tutorialKey = `weltkochen_tutorial_seen_${currentUser.id}`;
-    if (!window.localStorage.getItem(tutorialKey)) {
+
+    if (currentUser.onboardingCompleted === false) {
       setTutorialStep(0);
       setTutorialOpen(true);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.onboardingCompleted]);
 
-  function closeTutorial(markSeen = true) {
-    if (markSeen && currentUser?.id) {
-      window.localStorage.setItem(`weltkochen_tutorial_seen_${currentUser.id}`, "1");
+  async function markTutorialCompleted() {
+    if (!currentUser?.id) return;
+    try {
+      const { error } = await supabase
+        .from("weltkochen_profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", currentUser.id);
+
+      if (error) throw error;
+
+      setCurrentUser((user) => user ? { ...user, onboardingCompleted: true } : user);
+    } catch (err) {
+      console.error("Tutorial-Status konnte nicht gespeichert werden:", err);
+    }
+  }
+
+  async function closeTutorial(markSeen = true) {
+    if (markSeen) {
+      await markTutorialCompleted();
     }
     setTutorialOpen(false);
   }
