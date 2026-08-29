@@ -379,6 +379,52 @@ function cleanIngredientRows(rows) {
     .filter((row) => row.name);
 }
 
+
+function ingredientCategory(name) {
+  const value = String(name || "").toLocaleLowerCase("de-DE");
+  const groups = [
+    ["Gemüse & Obst", ["tomate","tomaten","zwiebel","knoblauch","paprika","karotte","möhre","kartoffel","salat","gurke","zucchini","aubergine","apfel","banane","zitrone","limette","pilz","champignon","sellerie","lauch"]],
+    ["Fleisch & Fisch", ["hackfleisch","rind","schwein","hähnchen","huhn","pute","speck","schinken","wurst","lachs","fisch","garnelen","thunfisch"]],
+    ["Milchprodukte & Eier", ["milch","sahne","käse","mozzarella","parmesan","joghurt","quark","butter","ei","eier","schmand","creme fraiche"]],
+    ["Backen & Trockenwaren", ["mehl","zucker","reis","nudel","pasta","brot","paniermehl","haferflocken","hefe","stärke","couscous","bulgur"]],
+    ["Gewürze & Vorrat", ["salz","pfeffer","öl","essig","paprikapulver","curry","brühe","senf","ketchup","tomatenmark","sojasauce","honig","zimt","muskat"]],
+  ];
+  for (const [label, words] of groups) {
+    if (words.some((word) => value.includes(word))) return label;
+  }
+  return "Sonstiges";
+}
+
+function normalizeShoppingKey(item) {
+  return `${String(item.name || "").trim().toLocaleLowerCase("de-DE")}__${String(item.unit || "").trim().toLocaleLowerCase("de-DE")}`;
+}
+
+function combineShoppingItems(items) {
+  const map = new Map();
+  for (const item of items) {
+    const key = normalizeShoppingKey(item);
+    if (!map.has(key)) {
+      map.set(key, {
+        ...item,
+        ids: [item.id],
+        recipeNames: item.recipeName ? [item.recipeName] : [],
+        category: ingredientCategory(item.name),
+      });
+      continue;
+    }
+    const current = map.get(key);
+    current.ids.push(item.id);
+    if (item.recipeName && !current.recipeNames.includes(item.recipeName)) current.recipeNames.push(item.recipeName);
+    if (current.amount === "" || current.amount == null || item.amount === "" || item.amount == null) {
+      current.amount = current.amount === "" || current.amount == null ? item.amount : current.amount;
+    } else {
+      current.amount = Number(current.amount) + Number(item.amount);
+    }
+    current.checked = current.checked && item.checked;
+  }
+  return [...map.values()];
+}
+
 function formatIngredientAmount(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "";
@@ -1909,6 +1955,7 @@ export default function WeltkochenApp() {
   const [planNote, setPlanNote] = useState("");
   const [planSearch, setPlanSearch] = useState("");
   const [planSearchOpen, setPlanSearchOpen] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -2040,6 +2087,40 @@ export default function WeltkochenApp() {
       .sort((a, b) => a.score - b.score || a.recipe.dish.localeCompare(b.recipe.dish, "de"))
       .slice(0, 10);
   }, [recipeEntries, planSearch]);
+
+  const currentWeekDays = useMemo(() => {
+    const today = new Date();
+    const day = today.getDay() || 7;
+    const monday = new Date(today);
+    monday.setHours(12, 0, 0, 0);
+    monday.setDate(today.getDate() - day + 1 + (weekOffset * 7));
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return {
+        date,
+        iso: date.toISOString().slice(0, 10),
+        label: date.toLocaleDateString("de-DE", { weekday: "short" }),
+        dayLabel: date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+      };
+    });
+  }, [weekOffset]);
+
+  const weeklyPlanEntries = useMemo(() => {
+    const start = currentWeekDays[0]?.iso;
+    const endDate = currentWeekDays[6]?.iso;
+    return mealPlan.filter((entry) => entry.plan_date >= start && entry.plan_date <= endDate);
+  }, [mealPlan, currentWeekDays]);
+
+  const combinedShoppingItems = useMemo(() => combineShoppingItems(shoppingList), [shoppingList]);
+
+  const groupedShoppingItems = useMemo(() => {
+    return combinedShoppingItems.reduce((groups, item) => {
+      if (!groups[item.category]) groups[item.category] = [];
+      groups[item.category].push(item);
+      return groups;
+    }, {});
+  }, [combinedShoppingItems]);
   const visibleRecipes = useMemo(() => filterRecipesForTable(recipeEntries, query, activeCountry), [recipeEntries, query, activeCountry]);
 
   const topRecipeEntry = useMemo(() => {
@@ -2277,6 +2358,41 @@ export default function WeltkochenApp() {
     await addRecipeToShoppingList(pair[1], entry.servings);
   }
 
+
+  async function addWeekToShoppingList() {
+    const additions = [];
+    for (const entry of weeklyPlanEntries) {
+      const pair = recipeEntries.find(([, recipe]) => recipe.id === entry.recipe_id);
+      const recipe = pair?.[1];
+      if (!recipe) continue;
+      const baseServings = Number(recipe.servings) || 4;
+      const scale = Math.max(1, Number(entry.servings) || baseServings) / baseServings;
+      for (const item of cleanIngredientRows(recipe.ingredients)) {
+        additions.push({
+          user_id: currentUser.id,
+          recipe_id: recipe.id,
+          recipe_name: recipe.dish,
+          amount: item.amount === "" ? null : Number(item.amount) * scale,
+          unit: item.unit || "",
+          name: item.name,
+          checked: false,
+        });
+      }
+    }
+
+    if (!additions.length) {
+      window.alert("Für diese Woche sind noch keine Rezepte mit Zutaten geplant.");
+      return;
+    }
+
+    const { error } = await supabase.from("weltkochen_shopping_items").insert(additions);
+    if (error) {
+      setStorageError(error.message);
+      return;
+    }
+    await loadShoppingList();
+    setShoppingListOpen(true);
+  }
 
   async function handleImageUpload(event) {
     const file = event.target.files?.[0];
@@ -2662,7 +2778,7 @@ export default function WeltkochenApp() {
             <button onClick={() => setPage("favoriten")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "favoriten" ? "border-stone-900" : "border-transparent"}`}><Heart size={20} /> Favoriten</button>
             <button onClick={() => setPage("kochplan")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "kochplan" ? "border-stone-900" : "border-transparent"}`}><CalendarDays size={20} /> Kochplan</button>
             {currentUser.role === "admin" && <button onClick={() => setPage("admin")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "admin" ? "border-stone-900" : "border-transparent"}`}><BarChart3 size={20} /> Admin</button>}
-            <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 border-b-2 border-transparent px-3 py-2 font-semibold"><ShoppingCart size={20} /> Einkauf {shoppingList.length ? `(${shoppingList.length})` : ""}</button>
+            <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 border-b-2 border-transparent px-3 py-2 font-semibold"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
 
@@ -2910,7 +3026,72 @@ export default function WeltkochenApp() {
             <p className="mt-2 text-stone-600">Plane Rezepte für bestimmte Tage und übernimm die Zutaten direkt in deine Einkaufsliste.</p>
           </div>
 
-          <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <Card className="mb-6 border-2 border-stone-300 bg-[#fff8e9]">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-2xl font-black">Wochenübersicht</h3>
+                  <p className="text-sm text-stone-600">
+                    {currentWeekDays[0]?.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} – {currentWeekDays[6]?.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={() => setWeekOffset((value) => value - 1)} className="rounded-xl bg-white">← Vorherige</Button>
+                  <Button type="button" variant="outline" onClick={() => setWeekOffset(0)} className="rounded-xl bg-white">Diese Woche</Button>
+                  <Button type="button" variant="outline" onClick={() => setWeekOffset((value) => value + 1)} className="rounded-xl bg-white">Nächste →</Button>
+                  <Button type="button" onClick={addWeekToShoppingList} className="rounded-xl bg-stone-900 text-white">
+                    <ShoppingCart className="mr-2 h-4 w-4" /> Woche einkaufen
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-7">
+                {currentWeekDays.map((day) => {
+                  const entries = mealPlan.filter((entry) => entry.plan_date === day.iso);
+                  return (
+                    <div key={day.iso} className="min-h-40 rounded-2xl border border-stone-200 bg-white p-3">
+                      <div className="mb-3 border-b border-stone-100 pb-2">
+                        <p className="font-black uppercase">{day.label}</p>
+                        <p className="text-xs text-stone-500">{day.dayLabel}</p>
+                      </div>
+                      <div className="space-y-2">
+                        {entries.map((entry) => {
+                          const pair = recipeEntries.find(([, recipe]) => recipe.id === entry.recipe_id);
+                          const recipe = pair?.[1];
+                          const country = pair?.[0];
+                          return (
+                            <button
+                              key={entry.id}
+                              type="button"
+                              onClick={() => recipe && openRecipe(recipe, country)}
+                              className="w-full rounded-xl bg-amber-50 p-2 text-left hover:bg-amber-100"
+                            >
+                              <p className="text-sm font-black">{recipe?.dish || "Rezept nicht verfügbar"}</p>
+                              <p className="mt-1 text-xs text-stone-500">{entry.servings} Pers.{entry.note ? ` · ${entry.note}` : ""}</p>
+                            </button>
+                          );
+                        })}
+                        {!entries.length && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlanDate(day.iso);
+                              document.getElementById("meal-plan-entry")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }}
+                            className="w-full rounded-xl border border-dashed border-stone-300 p-3 text-xs font-semibold text-stone-500 hover:bg-stone-50"
+                          >
+                            + Gericht planen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card id="meal-plan-entry" className="border-2 border-stone-300 bg-[#fff8e9]">
             <CardContent className="p-5">
               <div className="grid gap-3 md:grid-cols-[160px_1fr_130px]">
                 <label>
@@ -3280,24 +3461,43 @@ export default function WeltkochenApp() {
               <div>
                 <p className="text-sm uppercase tracking-wide text-amber-700">Einkaufen</p>
                 <h2 className="text-3xl font-black">Einkaufsliste</h2>
-                <p className="mt-1 text-sm text-stone-500">{shoppingList.length} Position{shoppingList.length === 1 ? "" : "en"}</p>
+                <p className="mt-1 text-sm text-stone-500">{combinedShoppingItems.length} Position{combinedShoppingItems.length === 1 ? "" : "en"} · gleiche Zutaten werden zusammengefasst</p>
               </div>
               <Button type="button" variant="outline" onClick={() => setShoppingListOpen(false)} className="rounded-xl bg-white">Schließen</Button>
             </div>
 
-            <div className="mt-5 space-y-2">
-              {shoppingList.map((item) => (
-                <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 ${item.checked ? "opacity-50" : ""}`}>
-                  <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} className="h-5 w-5" />
-                  <div className="min-w-0 flex-1">
-                    <div className={item.checked ? "line-through" : ""}>
-                      <b>{item.amount === "" ? "" : formatIngredientAmount(item.amount)} {item.unit}</b> {item.name}
-                    </div>
-                    <div className="text-xs text-stone-500">{item.recipeName}</div>
+            <div className="mt-5 space-y-5">
+              {Object.entries(groupedShoppingItems).map(([category, items]) => (
+                <div key={category}>
+                  <h3 className="mb-2 text-sm font-black uppercase tracking-wide text-amber-700">{category}</h3>
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <label key={item.ids.join("-")} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 ${item.checked ? "opacity-50" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={async () => {
+                            const nextChecked = !item.checked;
+                            const { error } = await supabase
+                              .from("weltkochen_shopping_items")
+                              .update({ checked: nextChecked })
+                              .in("id", item.ids);
+                            if (!error) await loadShoppingList();
+                          }}
+                          className="h-5 w-5"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className={item.checked ? "line-through" : ""}>
+                            <b>{item.amount === "" ? "" : formatIngredientAmount(item.amount)} {item.unit}</b> {item.name}
+                          </div>
+                          <div className="text-xs text-stone-500">{item.recipeNames.join(" · ")}</div>
+                        </div>
+                      </label>
+                    ))}
                   </div>
-                </label>
+                </div>
               ))}
-              {!shoppingList.length && <p className="rounded-xl bg-white p-4 text-stone-500">Noch nichts auf der Einkaufsliste.</p>}
+              {!combinedShoppingItems.length && <p className="rounded-xl bg-white p-4 text-stone-500">Noch nichts auf der Einkaufsliste.</p>}
             </div>
 
             <div className="mt-5 flex justify-end">
