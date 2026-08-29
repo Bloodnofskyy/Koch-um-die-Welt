@@ -811,385 +811,145 @@ function AuthScreen({ onLogin, storageError }) {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#efe3cc] text-stone-900">
-      {/* Weltreise-Hintergrund */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-28 -top-28 h-96 w-96 rounded-full bg-amber-300/30 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-[32rem] w-[32rem] rounded-full bg-sky-300/25 blur-3xl" />
-        <div className="absolute left-[42%] top-[6%] h-72 w-72 rounded-full bg-emerald-300/15 blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.13]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(68,56,42,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(68,56,42,.22) 1px, transparent 1px)",
-            backgroundSize: "52px 52px",
-            maskImage: "linear-gradient(to bottom, black, transparent 88%)",
-          }}
-        />
-        <div className="absolute left-[8%] top-[14%] hidden rotate-[-12deg] rounded-2xl border-2 border-dashed border-stone-700/15 px-5 py-3 text-center lg:block">
-          <p className="text-[10px] font-black uppercase tracking-[.25em] text-stone-700/35">Passport</p>
-          <p className="text-2xl font-black text-stone-700/25">ITALIA</p>
-        </div>
-        <div className="absolute right-[8%] top-[17%] hidden rotate-[8deg] rounded-full border-2 border-stone-700/15 px-5 py-5 text-center lg:block">
-          <Plane className="mx-auto h-6 w-6 text-stone-700/25" />
-          <p className="mt-1 text-[9px] font-black uppercase tracking-[.18em] text-stone-700/30">Around the world</p>
-        </div>
-      </div>
+    <div className="relative min-h-screen overflow-hidden bg-stone-950 text-white">
+      {/* Food-table hero background. Put login-food-world-bg.png in /public */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/login-food-world-bg.png')" }}
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(12,10,8,.22)_0%,rgba(12,10,8,.12)_42%,rgba(12,10,8,.48)_100%)]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/15" />
 
-      <div className="relative mx-auto grid min-h-screen max-w-[1500px] lg:grid-cols-[1.12fr_.88fr]">
-        {/* Marken-/Motto-Seite */}
-        <section className="relative flex min-h-[46vh] flex-col overflow-hidden bg-stone-900 px-6 py-8 text-white sm:px-10 lg:min-h-screen lg:px-12 lg:py-10 xl:px-14">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-28 -top-24 h-80 w-80 rounded-full border border-white/10" />
-            <div className="absolute -right-12 -top-6 h-52 w-52 rounded-full border border-white/10" />
-            <div className="absolute bottom-[-10rem] left-[-8rem] h-[28rem] w-[28rem] rounded-full bg-amber-400/16 blur-3xl" />
-            <div className="absolute left-[52%] top-[42%] h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
-            <div className="absolute inset-x-0 top-[62%] h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-          </div>
-
-          <div className="relative z-10 flex items-center justify-between gap-4">
+      <div className="relative mx-auto flex min-h-screen max-w-[1700px] items-center px-4 py-5 sm:px-6 lg:px-10">
+        <div className="grid w-full gap-6 lg:grid-cols-[1.12fr_.88fr] lg:items-center xl:grid-cols-[1.18fr_.82fr]">
+          <section className="flex min-h-[44vh] flex-col justify-between px-2 py-4 sm:px-4 lg:min-h-[86vh] lg:py-8">
             <div className="flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-stone-950 shadow-[0_10px_30px_rgba(251,191,36,.25)]">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber-300/40 bg-stone-950/70 text-amber-300 shadow-xl backdrop-blur-md">
                 <ChefHat className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-lg font-black tracking-tight">Koch dich um die Welt</p>
-                <p className="text-xs font-semibold text-stone-400">Die kulinarische Weltreise</p>
+              <div className="drop-shadow-lg">
+                <p className="text-lg font-black">Koch dich um die Welt</p>
+                <p className="text-xs font-bold text-white/70">Die kulinarische Weltreise</p>
               </div>
             </div>
-            <div className="hidden rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-stone-300 xl:block">
-              🌍 0 % Jetlag · 100 % Hunger
-            </div>
-          </div>
 
-          <div className="relative z-10 mt-10 grid flex-1 content-center gap-7 xl:mt-6 xl:grid-cols-[1.05fr_.95fr] xl:items-center">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-xs font-black uppercase tracking-[.14em] text-amber-300 backdrop-blur">
-                <Sparkles className="h-4 w-4" /> Kochen. Entdecken. Erinnern.
+            <div className="max-w-2xl py-10 lg:py-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-stone-950/65 px-3 py-1.5 text-xs font-black uppercase tracking-[.16em] text-amber-300 shadow-lg backdrop-blur-md">
+                <Sparkles className="h-4 w-4" /> Eine Reise. Tausende Geschmäcker.
               </div>
-              <h1 className="mt-5 text-4xl font-black leading-[.96] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-[4.2rem]">
-                Die Welt passt
-                <span className="block text-amber-300">auf deinen Teller.</span>
+              <h1 className="mt-5 text-5xl font-black leading-[.88] tracking-[-.055em] drop-shadow-[0_5px_18px_rgba(0,0,0,.65)] sm:text-6xl lg:text-7xl xl:text-8xl">
+                Koch dich
+                <span className="block text-amber-300">um die Welt.</span>
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-7 text-stone-300 sm:text-lg">
-                Ein bisschen Reisebüro, ein bisschen Familienkochbuch und ein bisschen
-                „Wer hat bitte schon wieder 5 Sterne gegeben?“
+              <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-white/90 drop-shadow-md sm:text-lg">
+                Neue Länder. Neue Rezepte. Neue Lieblingsgerichte.
+                Und garantiert mindestens eine Diskussion darüber, ob das wirklich 5 Sterne waren.
               </p>
 
-              <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
-                  <Compass className="h-5 w-5 text-amber-300" />
-                  <p className="mt-3 text-sm font-black">Länder entdecken</p>
-                  <p className="mt-1 text-xs leading-5 text-stone-400">Von Pasta bis Plov. Hauptsache lecker.</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
-                  <UtensilsCrossed className="h-5 w-5 text-amber-300" />
-                  <p className="mt-3 text-sm font-black">Gemeinsam kochen</p>
-                  <p className="mt-1 text-xs leading-5 text-stone-400">Rezepte sammeln. Diskussionen inklusive.</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.09]">
-                  <Globe2 className="h-5 w-5 text-amber-300" />
-                  <p className="mt-3 text-sm font-black">Karte füllen</p>
-                  <p className="mt-1 text-xs leading-5 text-stone-400">Grün ist hier die leckerste Farbe.</p>
-                </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-2 text-xs font-black">
-                <span className="rounded-full bg-amber-300 px-3 py-1.5 text-stone-950">🍝 Italien? Pflichtprogramm.</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-stone-300">🌶️ Schärfe auf eigene Gefahr.</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-stone-300">⭐ 5 Sterne werden hart erkocht.</span>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/20 bg-black/55 px-3 py-2 text-xs font-black shadow-lg backdrop-blur-md">✈️ Kein Visum nötig</span>
+                <span className="rounded-full border border-white/20 bg-black/55 px-3 py-2 text-xs font-black shadow-lg backdrop-blur-md">🍴 100 % Hunger</span>
+                <span className="rounded-full border border-white/20 bg-black/55 px-3 py-2 text-xs font-black shadow-lg backdrop-blur-md">🌍 Über 190 Länder</span>
+                <span className="rounded-full border border-amber-300/40 bg-amber-300 px-3 py-2 text-xs font-black text-stone-950 shadow-lg">⭐ 5 Sterne werden erkocht</span>
               </div>
             </div>
 
-            <div className="relative hidden min-h-[430px] xl:block">
-              <div className="absolute left-4 top-8 w-[82%] rotate-[-5deg] rounded-[2rem] border border-white/10 bg-[#f7edda] p-5 text-stone-900 shadow-[0_24px_50px_rgba(0,0,0,.28)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-stone-500">Kulinarischer Reisepass</p>
-                    <p className="mt-1 text-2xl font-black tracking-tight">Heute schon woanders gegessen?</p>
-                  </div>
-                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-900 text-amber-300"><Globe2 className="h-5 w-5" /></div>
-                </div>
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-white p-3 shadow-sm">
-                    <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Nächste Station</p>
-                    <p className="mt-1 font-black">Irgendwo mit Käse</p>
-                    <p className="mt-1 text-xs text-stone-500">Genaue Route wird noch gekocht.</p>
-                  </div>
-                  <div className="rounded-2xl bg-stone-900 p-3 text-white shadow-sm">
-                    <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Reisebudget</p>
-                    <p className="mt-1 font-black text-amber-300">1 große Portion</p>
-                    <p className="mt-1 text-xs text-stone-400">Dessert separat verhandelbar.</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center justify-between rounded-2xl border border-dashed border-stone-300 p-3">
-                  <div>
-                    <p className="text-xs font-black">Stempel des Tages</p>
-                    <p className="text-[11px] text-stone-500">„Hat geschmeckt, darf bleiben.“</p>
-                  </div>
-                  <div className="rotate-[-8deg] rounded-full border-2 border-amber-500 px-3 py-2 text-[10px] font-black uppercase tracking-[.12em] text-amber-700">Genehmigt</div>
-                </div>
+            <div className="hidden max-w-xl items-end justify-between gap-4 lg:flex">
+              <div className="rotate-[-2deg] rounded-2xl border border-white/20 bg-[#f4e3bd]/95 px-4 py-3 text-stone-900 shadow-xl">
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-stone-500">Heutige Reiseregel</p>
+                <p className="mt-1 font-black">Irgendwo schmeckt immer gut. 😋</p>
               </div>
-
-              <div className="absolute bottom-10 right-0 w-[56%] rotate-[7deg] rounded-3xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_45px_rgba(0,0,0,.24)] backdrop-blur">
-                <p className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Boarding Pass</p>
-                <div className="mt-2 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-black">HOME</p>
-                    <p className="text-[10px] text-stone-400">Küche</p>
-                  </div>
-                  <Plane className="h-5 w-5 text-stone-400" />
-                  <div className="text-right">
-                    <p className="text-sm font-black">WORLD</p>
-                    <p className="text-[10px] text-stone-400">Teller</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="absolute bottom-0 left-8 rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-stone-950 shadow-lg">
-                Kein Visum nötig. Nur Appetit.
+              <div className="rotate-[3deg] rounded-2xl border border-amber-300/30 bg-stone-950/75 px-4 py-3 shadow-xl backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-amber-300">Boarding Pass</p>
+                <p className="mt-1 text-sm font-black">HOME ✈ WORLD</p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="relative z-10 mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-xs font-semibold text-stone-500">
-            <span>Eine Reise ohne Koffer. Aber mit Hunger.</span>
-            <span className="hidden sm:inline">✈️ Nächster Halt: Küche.</span>
-          </div>
-        </section>
-
-        {/* Login-Fenster */}
-        <section className="relative flex items-center justify-center overflow-hidden px-4 py-7 sm:px-8 lg:px-10 xl:px-12">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-1/2 top-[14%] h-80 w-80 -translate-x-1/2 rounded-full bg-amber-300/25 blur-3xl" />
-            <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-sky-300/20 blur-3xl" />
-            <div className="absolute right-[10%] top-[9%] hidden rotate-[9deg] rounded-2xl border-2 border-dashed border-stone-500/10 px-5 py-3 text-center xl:block">
-              <p className="text-[9px] font-black uppercase tracking-[.22em] text-stone-500/35">Departure</p>
-              <p className="text-lg font-black text-stone-500/25">KÜCHE → WELT</p>
-            </div>
-          </div>
-          <div className="relative z-10 w-full max-w-xl">
-            <div className="mb-4 hidden items-center justify-between rounded-2xl border border-stone-200/80 bg-white/60 px-4 py-3 shadow-sm backdrop-blur lg:flex">
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700"><Plane className="h-4 w-4" /></div>
-                <div>
-                  <p className="text-xs font-black text-stone-700">Boarding beginnt jetzt</p>
-                  <p className="text-[11px] text-stone-500">Ziel: irgendein Land mit gutem Essen.</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-stone-900 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">Gate Küche</span>
-            </div>
-
-            <div className="mb-5 flex items-center justify-between px-1 lg:hidden">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[.14em] text-amber-700">Willkommen</p>
-                <p className="text-lg font-black">Bereit für die nächste Station?</p>
-              </div>
-              <Globe2 className="h-8 w-8 text-stone-400" />
-            </div>
-
+          <section className="flex justify-center lg:justify-end">
             <form
               onSubmit={handleSubmit}
-              className="relative overflow-hidden rounded-[2rem] border border-white/90 bg-[#fffaf0]/95 p-5 shadow-[0_30px_80px_rgba(60,43,24,.20)] backdrop-blur-xl sm:p-7"
+              className="relative w-full max-w-[560px] overflow-hidden rounded-[2rem] border border-amber-300/35 bg-[#121313]/92 p-5 text-white shadow-[0_35px_100px_rgba(0,0,0,.48)] backdrop-blur-xl sm:p-7 lg:p-8"
             >
-              <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+              <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
 
               <div className="relative">
-                <div className="mb-6 flex rounded-2xl border border-stone-200 bg-stone-100/90 p-1">
-                  <button
-                    type="button"
-                    onClick={() => { setMode("login"); setError(""); }}
-                    className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${mode === "login" ? "bg-white text-stone-950 shadow-sm" : "text-stone-500 hover:text-stone-800"}`}
-                  >
+                <div className="mb-6 text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-amber-300/30 bg-amber-300/10 text-amber-300">
+                    <Globe2 className="h-6 w-6" />
+                  </div>
+                  <p className="mt-4 text-xs font-black uppercase tracking-[.18em] text-amber-300">
+                    {mode === "login" ? "Willkommen zurück" : "Neue Reise"}
+                  </p>
+                  <h2 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">
+                    {mode === "login" ? <>Weiter geht die <span className="text-amber-300">Weltreise.</span></> : <>Dein kulinarischer <span className="text-amber-300">Reisepass.</span></>}
+                  </h2>
+                </div>
+
+                <div className="mb-6 grid grid-cols-2 rounded-2xl border border-white/10 bg-white/[0.05] p-1">
+                  <button type="button" onClick={() => { setMode("login"); setError(""); }} className={`rounded-xl px-3 py-3 text-sm font-black transition ${mode === "login" ? "bg-white/10 text-amber-300 shadow-sm" : "text-stone-400 hover:text-white"}`}>
                     Anmelden
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMode("register"); setError(""); }}
-                    className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${mode === "register" ? "bg-white text-stone-950 shadow-sm" : "text-stone-500 hover:text-stone-800"}`}
-                  >
+                  <button type="button" onClick={() => { setMode("register"); setError(""); }} className={`rounded-xl px-3 py-3 text-sm font-black transition ${mode === "register" ? "bg-white/10 text-amber-300 shadow-sm" : "text-stone-400 hover:text-white"}`}>
                     Neue Reise starten
                   </button>
                 </div>
 
-                <div className="mb-6">
-                  <p className="text-xs font-black uppercase tracking-[.16em] text-amber-700">
-                    {mode === "login" ? "Willkommen zurück" : "Dein Reisepass"}
-                  </p>
-                  <h2 className="mt-1 text-3xl font-black tracking-tight">
-                    {mode === "login" ? "Weiter geht die Weltreise." : "Konto erstellen."}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-stone-500">
-                    {mode === "login"
-                      ? "Melde dich an und spring direkt zurück zu eurer kulinarischen Karte."
-                      : "Mit Einladungscode bekommst du deinen Platz in eurer gemeinsamen Kochrunde."}
-                  </p>
-                </div>
-
                 <div className="space-y-3.5">
-                  {mode === "register" && (
-                    <>
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Anzeigename</span>
-                        <div className="relative">
-                          <UserRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                          <input
-                            required
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            autoComplete="name"
-                            placeholder="Wie sollen wir dich nennen?"
-                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                          />
-                        </div>
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Benutzername</span>
-                        <div className="relative">
-                          <Compass className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                          <input
-                            required
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            autoComplete="username"
-                            placeholder="Dein Benutzername"
-                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                          />
-                        </div>
-                      </label>
-
-                      <label className="block">
-                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Einladungscode</span>
-                        <div className="relative">
-                          <KeyRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                          <input
-                            required
-                            value={inviteCode}
-                            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                            autoComplete="off"
-                            placeholder="Dein Ticket zur Weltreise"
-                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-mono font-black uppercase tracking-widest outline-none transition placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                          />
-                        </div>
-                      </label>
-                    </>
-                  )}
+                  {mode === "register" && <>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-stone-400">Anzeigename</span>
+                      <div className="relative"><UserRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input required value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" placeholder="Wie sollen wir dich nennen?" className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-4 font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" /></div>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-stone-400">Benutzername</span>
+                      <div className="relative"><Compass className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input required value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" placeholder="Dein Benutzername" className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-4 font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" /></div>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-stone-400">Einladungscode</span>
+                      <div className="relative"><KeyRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input required value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} autoComplete="off" placeholder="Dein Ticket zur Weltreise" className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-4 font-mono font-black uppercase tracking-widest text-white outline-none placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" /></div>
+                    </label>
+                  </>}
 
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">E-Mail</span>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                      <input
-                        required
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="email"
-                        placeholder="name@beispiel.de"
-                        className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                      />
-                    </div>
+                    <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-stone-400">E-Mail</span>
+                    <div className="relative"><Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="weltenbummler@foodie.de" className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-4 font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" /></div>
                   </label>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Passwort</span>
+                    <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-stone-400">Passwort</span>
                     <div className="relative">
-                      <LockKeyhole className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
-                      <input
-                        required
-                        type={showPassword ? "text" : "password"}
-                        minLength={8}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        autoComplete={mode === "register" ? "new-password" : "current-password"}
-                        placeholder={mode === "register" ? "Mindestens 8 Zeichen" : "Dein Passwort"}
-                        className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-12 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((value) => !value)}
-                        className="absolute right-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-xl text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
-                        aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
-                      >
+                      <LockKeyhole className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" />
+                      <input required type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder={mode === "register" ? "Mindestens 8 Zeichen" : "Dein geheimes Rezept"} className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-12 font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" />
+                      <button type="button" onClick={() => setShowPassword(v=>!v)} className="absolute right-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-stone-500 hover:bg-white/5 hover:text-white" aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}>
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </label>
 
-                  {success && (
-                    <div className="flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm font-semibold text-emerald-800">
-                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-                      <span>{success}</span>
-                    </div>
-                  )}
-                  {error && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm font-semibold text-red-700">
-                      {error}
-                    </div>
-                  )}
-                  {storageError && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm font-semibold text-red-700">
-                      {storageError}
-                    </div>
-                  )}
+                  {success && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-300">{success}</div>}
+                  {error && <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-sm font-semibold text-red-300">{error}</div>}
+                  {storageError && <div className="rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-sm font-semibold text-red-300">{storageError}</div>}
 
-                  <div className="rounded-2xl border border-stone-200 bg-white/70 p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-lg">🍴</div>
-                      <div>
-                        <p className="text-xs font-black text-stone-700">
-                          {mode === "login" ? "Kleine Reisewarnung" : "Fast startklar"}
-                        </p>
-                        <p className="mt-0.5 text-[11px] leading-5 text-stone-500">
-                          {mode === "login"
-                            ? "Nach dem Login kann spontaner Hunger auf internationale Küche auftreten."
-                            : "Einladungscode rein, Reisepass erstellen und schon gehört dir ein Platz am Tisch."}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={
-                      busy ||
-                      (mode === "register" &&
-                        (!displayName.trim() ||
-                          !username.trim() ||
-                          !inviteCode.trim() ||
-                          !email.trim() ||
-                          password.length < 8))
-                    }
-                    className="group mt-1 w-full rounded-2xl bg-stone-900 py-6 text-base font-black text-white shadow-[0_12px_30px_rgba(28,25,23,.18)] transition hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-[0_16px_38px_rgba(28,25,23,.24)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <span className="flex items-center justify-center gap-2">
-                      {busy ? (
-                        <>
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                          Bitte warten...
-                        </>
-                      ) : mode === "login" ? (
-                        <>
-                          Weltreise fortsetzen <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" />
-                        </>
-                      ) : (
-                        <>
-                          Reisepass erstellen <Plane className="h-5 w-5 transition group-hover:translate-x-1" />
-                        </>
-                      )}
-                    </span>
+                  <Button type="submit" disabled={busy || (mode === "register" && (!displayName.trim() || !username.trim() || !inviteCode.trim() || !email.trim() || password.length < 8))} className="group mt-2 w-full rounded-xl bg-amber-400 py-6 text-base font-black text-stone-950 shadow-[0_12px_30px_rgba(245,158,11,.20)] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50">
+                    {busy ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-900/30 border-t-stone-900" />Bitte warten...</span> : mode === "login" ? <span className="flex items-center justify-center gap-2">✈️ AB INS ABENTEUER <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" /></span> : <span className="flex items-center justify-center gap-2">REISEPASS ERSTELLEN <ChevronRight className="h-5 w-5" /></span>}
                   </Button>
+
+                  <div className="rounded-xl border border-dashed border-amber-300/30 bg-amber-300/[0.06] p-3.5">
+                    <p className="text-xs font-black uppercase tracking-wide text-amber-300">⚠ Reisewarnung</p>
+                    <p className="mt-1 text-xs leading-5 text-stone-400">Nach dem Login kann spontaner Hunger auf internationale Küche auftreten.</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-4 text-center">
+                  <div><p className="text-lg">🌍</p><p className="mt-1 text-[9px] font-black uppercase text-stone-500">Länder entdecken</p></div>
+                  <div><p className="text-lg">🍲</p><p className="mt-1 text-[9px] font-black uppercase text-stone-500">Rezepte sammeln</p></div>
+                  <div><p className="text-lg">⭐</p><p className="mt-1 text-[9px] font-black uppercase text-stone-500">Karte erkochen</p></div>
                 </div>
               </div>
             </form>
-
-            <div className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-stone-500">
-              <Globe2 className="h-4 w-4" />
-              <span>Koch dich um die Welt · Eure Rezepte, eure Reise.</span>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );
