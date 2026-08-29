@@ -4152,7 +4152,7 @@ export default function WeltkochenApp() {
         </div>
       )}
 
-      <button type="button" onClick={restartTutorial} className="fixed bottom-[5.7rem] right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white/95 text-stone-800 shadow-lg backdrop-blur md:hidden" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
+      <button type="button" onClick={restartTutorial} className="fixed bottom-[5.7rem] right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white text-stone-800 shadow-lg md:hidden" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
         <Sparkles className="h-5 w-5" />
       </button>
 
@@ -4167,7 +4167,10 @@ export default function WeltkochenApp() {
         </button>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-stone-200 bg-[#fffaf0]/96 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.10)] backdrop-blur-xl md:hidden">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[110] isolate border-t border-stone-200 bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.12)] md:hidden"
+        style={{ WebkitBackdropFilter: "none", backdropFilter: "none", transform: "translateZ(0)" }}
+      >
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
             ["karte", "Karte", Globe2],
