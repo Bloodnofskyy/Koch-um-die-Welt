@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Globe2,
   MapPin,
+  Link2,
+  ExternalLink,
   Plus,
   Search,
   Star,
@@ -303,6 +305,35 @@ function isCountryCompleted(list, requiredRecipes = DEFAULT_REQUIRED_RECIPES_PER
   return getQualifiedRecipesCount(list, minAverageRating) >= requiredRecipes;
 }
 
+function ingredientAmountToNumber(value) {
+  const raw = String(value ?? "").trim().replace(",", ".");
+  if (!raw) return "";
+  const unicode = { "¼": 0.25, "½": 0.5, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3, "⅛": 0.125, "⅜": 0.375, "⅝": 0.625, "⅞": 0.875 };
+  if (unicode[raw] != null) return unicode[raw];
+  if (raw.includes("/")) {
+    const [a, b] = raw.split("/").map(Number);
+    if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return a / b;
+  }
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : "";
+}
+
+function cleanIngredientRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      amount: ingredientAmountToNumber(row?.amount),
+      unit: String(row?.unit || "").trim(),
+      name: String(row?.name || "").trim(),
+    }))
+    .filter((row) => row.name);
+}
+
+function formatIngredientAmount(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "";
+  return Number.isInteger(num) ? String(num) : String(Math.round(num * 100) / 100).replace(".", ",");
+}
+
 function migrateRecipes(rawRecipes, username = "demo", displayName = "Demo") {
   const migrated = {};
   Object.entries(rawRecipes || {}).forEach(([country, value]) => {
@@ -315,6 +346,7 @@ function migrateRecipes(rawRecipes, username = "demo", displayName = "Demo") {
         ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
         recipe: recipe.recipe || "",
         notes: recipe.notes || "",
+        sourceUrl: recipe.sourceUrl || "",
         image: recipe.image || "",
         createdBy: recipe.createdBy || username,
         createdByName: recipe.createdByName || displayName,
@@ -331,6 +363,7 @@ function migrateRecipes(rawRecipes, username = "demo", displayName = "Demo") {
           ingredients: Array.isArray(value.ingredients) ? value.ingredients : [],
           recipe: value.recipe || "",
           notes: value.notes || "",
+          sourceUrl: value.sourceUrl || "",
           image: value.image || "",
           createdBy: value.createdBy || username,
           createdByName: value.createdByName || displayName,
@@ -727,7 +760,17 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
 }
 
 function RecipeModal({ openedRecipe, currentUser, setRating, onClose }) {
+  const [viewServings, setViewServings] = useState(Number(openedRecipe?.servings) || 4);
+
+  useEffect(() => {
+    setViewServings(Number(openedRecipe?.servings) || 4);
+  }, [openedRecipe?.id]);
+
   if (!openedRecipe) return null;
+
+  const baseServings = Number(openedRecipe.servings) || 4;
+  const ingredientScale = viewServings / baseServings;
+  const structuredIngredients = cleanIngredientRows(openedRecipe.ingredients);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -744,9 +787,48 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose }) {
 
         <div className="grid gap-6 md:grid-cols-[1fr_.7fr]">
           <div className="space-y-5">
+            {structuredIngredients.length > 0 && (
+              <div className="rounded-2xl border border-stone-200 bg-white p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-xl font-black">Zutaten</h3>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-stone-600">
+                    Personen
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={viewServings}
+                      onChange={(event) => setViewServings(Math.max(1, Number(event.target.value) || 1))}
+                      className="w-20 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                    />
+                  </label>
+                </div>
+                <div className="space-y-2">
+                  {structuredIngredients.map((ingredient, index) => (
+                    <div key={`${ingredient.name}-${index}`} className="grid grid-cols-[70px_70px_1fr] gap-2 rounded-xl bg-stone-50 px-3 py-2 text-sm">
+                      <span className="font-bold">
+                        {ingredient.amount === "" ? "" : formatIngredientAmount(Number(ingredient.amount) * ingredientScale)}
+                      </span>
+                      <span className="text-stone-500">{ingredient.unit}</span>
+                      <span>{ingredient.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h3 className="mb-3 text-xl font-black">Rezept</h3>
-              <div className="whitespace-pre-wrap leading-relaxed text-stone-700">{openedRecipe.recipe || "Kein Rezept eingetragen."}</div>
+              <h3 className="mb-3 text-xl font-black">Zubereitung</h3>
+              <div className="whitespace-pre-wrap leading-relaxed text-stone-700">{openedRecipe.recipe || "Keine Zubereitung eingetragen."}</div>
+              {openedRecipe.sourceUrl && (
+                <a
+                  href={openedRecipe.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-3 font-bold text-white"
+                >
+                  <ExternalLink className="h-4 w-4" /> Originalrezept öffnen
+                </a>
+              )}
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
               <h3 className="mb-3 text-xl font-black">Notizen</h3>
@@ -770,6 +852,7 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose }) {
               <div className="space-y-2 text-sm text-stone-700">
                 <p><b>Land:</b> {openedRecipe.country}</p>
                 <p><b>Kategorie:</b> {openedRecipe.category || "Hauptgericht"}</p>
+                <p><b>Grundmenge:</b> {baseServings} Personen</p>
                 <p><b>Ersteller:</b> {openedRecipe.createdByName || openedRecipe.createdBy}</p>
                 <p><b>Erstellt:</b> {new Date(openedRecipe.createdAt).toLocaleDateString()}</p>
               </div>
@@ -1232,7 +1315,7 @@ export default function WeltkochenApp() {
   const [selected, setSelected] = useState("Italien");
   const [hovered, setHovered] = useState("");
   const [query, setQuery] = useState("");
-  const [form, setForm] = useState({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
+  const [form, setForm] = useState({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
   const [suggestionText, setSuggestionText] = useState("");
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
   const [openedSuggestion, setOpenedSuggestion] = useState(null);
@@ -1242,6 +1325,9 @@ export default function WeltkochenApp() {
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
+  const [importError, setImportError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -1283,7 +1369,7 @@ export default function WeltkochenApp() {
 
   useEffect(() => {
     setEditingRecipeId(null);
-    setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
+    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
     setImageError("");
   }, [selected]);
 
@@ -1355,17 +1441,107 @@ export default function WeltkochenApp() {
     setImageError("");
   }
 
+  async function importRecipeFromLink() {
+    const url = String(form.sourceUrl || "").trim();
+    setImportMessage("");
+    setImportError("");
+    if (!url) {
+      setImportError("Bitte zuerst einen Rezept-Link einfügen.");
+      return;
+    }
+    if (!supabase) {
+      setImportError("Supabase ist nicht verbunden.");
+      return;
+    }
+
+    setImportBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-recipe", {
+        body: { url },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (!data?.ok) {
+        setForm((current) => ({ ...current, sourceUrl: data?.sourceUrl || url }));
+        setImportMessage(data?.message || "Der Link wurde gespeichert. Die Felder müssen manuell ausgefüllt werden.");
+        return;
+      }
+
+      const importedIngredients = (Array.isArray(data.ingredients) ? data.ingredients : []).map((item) => ({
+        amount: ingredientAmountToNumber(item?.amount),
+        unit: String(item?.unit || ""),
+        name: String(item?.name || ""),
+      })).filter((item) => item.name);
+
+      const importedCategory = recipeCategories.includes(data.category) ? data.category : form.category;
+
+      setForm((current) => ({
+        ...current,
+        sourceUrl: data.sourceUrl || url,
+        dish: data.title || current.dish,
+        image: data.image || current.image,
+        servings: Number(data.servings) || current.servings || 4,
+        ingredients: importedIngredients.length ? importedIngredients : current.ingredients,
+        recipe: data.instructions || current.recipe,
+        notes: data.description || current.notes,
+        category: importedCategory || "Hauptgericht",
+      }));
+      setImportMessage("Rezeptdaten wurden übernommen. Bitte kurz prüfen und danach speichern.");
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Rezept konnte nicht importiert werden.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  function updateIngredient(index, field, value) {
+    setForm((current) => ({
+      ...current,
+      ingredients: (Array.isArray(current.ingredients) ? current.ingredients : []).map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  }
+
+  function addIngredientRow() {
+    setForm((current) => ({
+      ...current,
+      ingredients: [...(Array.isArray(current.ingredients) ? current.ingredients : []), { amount: "", unit: "", name: "" }],
+    }));
+  }
+
+  function removeIngredientRow(index) {
+    setForm((current) => {
+      const next = (Array.isArray(current.ingredients) ? current.ingredients : []).filter((_, itemIndex) => itemIndex !== index);
+      return { ...current, ingredients: next.length ? next : [{ amount: "", unit: "", name: "" }] };
+    });
+  }
+
   function saveRecipe() {
     if (!form.dish.trim()) return;
     setRecipes((prev) => {
       const list = Array.isArray(prev[selected]) ? prev[selected] : [];
       if (editingRecipeId) {
-        return { ...prev, [selected]: list.map((recipe) => recipe.id === editingRecipeId ? { ...recipe, ...form, image: form.image || "" } : recipe) };
+        return {
+          ...prev,
+          [selected]: list.map((recipe) => recipe.id === editingRecipeId ? {
+            ...recipe,
+            ...form,
+            sourceUrl: form.sourceUrl || "",
+            servings: Math.max(1, Number(form.servings) || 4),
+            ingredients: cleanIngredientRows(form.ingredients),
+            image: form.image || "",
+          } : recipe),
+        };
       }
       const newRecipe = {
         id: `${selected}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         dish: form.dish,
         category: form.category || "Hauptgericht",
+        sourceUrl: form.sourceUrl || "",
+        servings: Math.max(1, Number(form.servings) || 4),
+        ingredients: cleanIngredientRows(form.ingredients),
         recipe: form.recipe,
         notes: form.notes,
         image: form.image || "",
@@ -1376,14 +1552,14 @@ export default function WeltkochenApp() {
       };
       return { ...prev, [selected]: [...list, newRecipe] };
     });
-    setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
+    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
     setImageError("");
     setEditingRecipeId(null);
   }
 
   function clearRecipe() {
     if (!editingRecipeId) {
-      setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
+      setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
       setImageError("");
       return;
     }
@@ -1393,7 +1569,7 @@ export default function WeltkochenApp() {
       if (!nextList.length) delete copy[selected];
       return copy;
     });
-    setForm({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
+    setForm({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
     setImageError("");
     setEditingRecipeId(null);
   }
@@ -1411,7 +1587,18 @@ export default function WeltkochenApp() {
 
   function editRecipe(recipe) {
     setEditingRecipeId(recipe.id);
-    setForm({ dish: recipe.dish || "", category: recipe.category || "Hauptgericht", recipe: recipe.recipe || "", notes: recipe.notes || "", image: recipe.image || "" });
+    setForm({
+      dish: recipe.dish || "",
+      category: recipe.category || "Hauptgericht",
+      sourceUrl: recipe.sourceUrl || "",
+      servings: Number(recipe.servings) || 4,
+      ingredients: Array.isArray(recipe.ingredients) && recipe.ingredients.length
+        ? recipe.ingredients.map((item) => ({ amount: ingredientAmountToNumber(item.amount), unit: item.unit || "", name: item.name || "" }))
+        : [{ amount: "", unit: "", name: "" }],
+      recipe: recipe.recipe || "",
+      notes: recipe.notes || "",
+      image: recipe.image || "",
+    });
     setImageError("");
     setPage("details");
   }
@@ -1444,7 +1631,16 @@ export default function WeltkochenApp() {
   function convertSuggestionToRecipe() {
     if (!openedSuggestion) return;
     setSelected(openedSuggestion.country);
-    setForm({ dish: openedSuggestion.suggestion, category: "Hauptgericht", recipe: "", notes: "Aus Rezeptvorschlag übernommen.", image: "" });
+    setForm({
+      dish: openedSuggestion.suggestion,
+      category: "Hauptgericht",
+      sourceUrl: "",
+      servings: 4,
+      ingredients: [{ amount: "", unit: "", name: "" }],
+      recipe: "",
+      notes: "Aus Rezeptvorschlag übernommen.",
+      image: "",
+    });
     setImageError("");
     setEditingRecipeId(null);
     removeSuggestion(openedSuggestion.country, openedSuggestion.index);
@@ -1566,7 +1762,7 @@ export default function WeltkochenApp() {
                       <button key={recipe.id} onClick={() => openRecipe(recipe, activeCountry)} className="w-full rounded-2xl border border-stone-200 bg-white p-3 text-left hover:bg-amber-50">
                         {recipe.image && <img src={recipe.image} alt={recipe.dish} className="mb-3 h-28 w-full rounded-xl object-cover" />}
                         <p><b>{recipe.dish}</b></p>
-                        <p className="text-xs text-stone-500">{recipe.category || "Hauptgericht"} · erstellt von {recipe.createdByName || recipe.createdBy}</p>
+                        <p className="text-xs text-stone-500">{recipe.category || "Hauptgericht"} · erstellt von {recipe.createdByName || recipe.createdBy}{recipe.sourceUrl ? " · mit Original-Link" : ""}</p>
                         <RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(activeCountry, recipe.id, rating)} small />
                         <p className="text-xs text-stone-500">Deine Bewertung · Ø {getRecipeAverage(recipe)}</p>
                       </button>
@@ -1600,6 +1796,34 @@ export default function WeltkochenApp() {
                 <CardContent className="p-6">
                   <div className="mb-5 flex items-center justify-between gap-3"><div><p className="text-sm uppercase tracking-wide text-amber-700">Ausgewähltes Land</p><h2 className="text-3xl font-black">{selected}</h2><p className="text-sm text-stone-500">{getQualifiedRecipesCount(recipes[selected], settings.minAverageRatingForCompletion)} / {settings.requiredRecipesPerCountry} Rezepte über {settings.minAverageRatingForCompletion} Sterne</p></div>{isCountryCompleted(recipes[selected], settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion) && <CheckCircle2 className="h-9 w-9 text-emerald-500" />}</div>
                   <div className="space-y-4">
+                    <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4">
+                      <label className="block">
+                        <span className="mb-1 block text-sm font-semibold text-stone-700">Rezept-Link</span>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="relative min-w-0 flex-1">
+                            <Link2 className="absolute left-3 top-3.5 h-5 w-5 text-stone-500" />
+                            <input
+                              type="url"
+                              value={form.sourceUrl || ""}
+                              onChange={(event) => setForm({ ...form, sourceUrl: event.target.value })}
+                              placeholder="https://..."
+                              className="w-full rounded-2xl border-2 border-stone-300 bg-white py-3 pl-11 pr-3 outline-none focus:border-amber-500"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={importRecipeFromLink}
+                            disabled={importBusy || !String(form.sourceUrl || "").trim()}
+                            className="rounded-2xl bg-stone-900 px-4 py-3 text-white disabled:opacity-50"
+                          >
+                            {importBusy ? "Importiere..." : "Rezept importieren"}
+                          </Button>
+                        </div>
+                      </label>
+                      {importMessage && <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">{importMessage}</p>}
+                      {importError && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{importError}</p>}
+                    </div>
+
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Gericht</span><input value={form.dish} onChange={(event) => setForm({ ...form, dish: event.target.value })} placeholder={countryHints[selected] || "z. B. Nationalgericht oder Lieblingsgericht"} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Kategorie</span><select value={form.category || "Hauptgericht"} onChange={(event) => setForm({ ...form, category: event.target.value })} className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500">{recipeCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
                     <label className="block">
@@ -1608,7 +1832,64 @@ export default function WeltkochenApp() {
                       {imageError && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{imageError}</p>}
                       {form.image && <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3"><img src={form.image} alt="Rezeptvorschau" className="max-h-56 w-full rounded-xl object-cover" /><Button type="button" onClick={removeImage} variant="outline" className="mt-3 rounded-xl border-stone-300 bg-white text-stone-800 hover:bg-stone-100">Bild entfernen</Button></div>}
                     </label>
-                    <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Rezept / Link / Zutaten</span><textarea value={form.recipe} onChange={(event) => setForm({ ...form, recipe: event.target.value })} placeholder="Zutaten, Zubereitung oder Rezept-Link eintragen..." rows={7} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
+                    <div className="rounded-2xl border border-stone-200 bg-white p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="font-black">Zutaten</h3>
+                        <label className="flex items-center gap-2 text-sm font-semibold text-stone-600">
+                          Rezept für
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={form.servings || 4}
+                            onChange={(event) => setForm({ ...form, servings: Math.max(1, Number(event.target.value) || 1) })}
+                            className="w-20 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                          />
+                          Personen
+                        </label>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {(Array.isArray(form.ingredients) ? form.ingredients : []).map((ingredient, index) => (
+                          <div key={index} className="grid grid-cols-[90px_90px_1fr_42px] gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              inputMode="decimal"
+                              value={ingredient.amount}
+                              onChange={(event) => updateIngredient(index, "amount", event.target.value)}
+                              placeholder="Menge"
+                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                            />
+                            <input
+                              value={ingredient.unit}
+                              onChange={(event) => updateIngredient(index, "unit", event.target.value)}
+                              placeholder="Einheit"
+                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                            />
+                            <input
+                              value={ingredient.name}
+                              onChange={(event) => updateIngredient(index, "name", event.target.value)}
+                              placeholder="Zutat"
+                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeIngredientRow(index)}
+                              className="grid min-h-10 place-items-center rounded-xl border border-stone-300 bg-white"
+                              aria-label="Zutat entfernen"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button type="button" onClick={addIngredientRow} variant="outline" className="mt-3 rounded-xl border-stone-300 bg-white">
+                        <Plus className="mr-2 h-4 w-4" /> Zutat hinzufügen
+                      </Button>
+                    </div>
+
+                    <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Zubereitung</span><textarea value={form.recipe} onChange={(event) => setForm({ ...form, recipe: event.target.value })} placeholder="Zubereitungsschritte eintragen..." rows={7} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
                     <div className="rounded-2xl border border-stone-200 bg-white p-3 text-sm text-stone-600">{editingRecipeId ? "Du bearbeitest ein bestehendes Rezept." : `Neues Rezept wird als erstellt von ${currentUser.displayName} gespeichert.`}</div>
                     <label className="block"><span className="mb-1 block text-sm font-semibold text-stone-600">Notizen</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Wer hat gekocht? Was würdet ihr ändern?" rows={4} className="w-full resize-none rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500" /></label>
                     <div className="flex flex-wrap gap-3"><Button onClick={saveRecipe} className="rounded-2xl bg-amber-400 px-5 py-6 text-stone-950 hover:bg-amber-300"><Plus className="mr-2 h-4 w-4" /> {editingRecipeId ? "Änderungen speichern" : "Neues Rezept speichern"}</Button><Button onClick={clearRecipe} variant="outline" className="rounded-2xl border-stone-300 bg-transparent px-5 py-6 text-stone-800 hover:bg-stone-100"><Trash2 className="mr-2 h-4 w-4" /> {editingRecipeId ? "Rezept löschen" : "Zurücksetzen"}</Button></div>
@@ -1620,7 +1901,7 @@ export default function WeltkochenApp() {
                       {(Array.isArray(recipes[selected]) ? recipes[selected] : []).map((recipe) => (
                         <button key={recipe.id} onClick={() => openRecipe(recipe, selected)} className="w-full rounded-2xl border border-stone-200 bg-[#fffaf0] p-3 text-left transition hover:border-amber-400 hover:bg-amber-50">
                           {recipe.image && <img src={recipe.image} alt={recipe.dish} className="mb-3 h-28 w-full rounded-xl object-cover" />}
-                          <div className="flex items-start justify-between gap-3"><div><p className="font-bold">{recipe.dish}</p><p className="text-xs text-stone-500">{recipe.category || "Hauptgericht"} · erstellt von {recipe.createdByName || recipe.createdBy}</p></div><Button type="button" onClick={(event) => { event.stopPropagation(); editRecipe(recipe); }} variant="outline" className="rounded-xl border-stone-300 bg-white px-3 py-2 text-xs text-stone-800 hover:bg-stone-100">Bearbeiten</Button></div>
+                          <div className="flex items-start justify-between gap-3"><div><p className="font-bold">{recipe.dish}</p><p className="text-xs text-stone-500">{recipe.category || "Hauptgericht"} · erstellt von {recipe.createdByName || recipe.createdBy}{recipe.sourceUrl ? " · mit Original-Link" : ""}</p></div><Button type="button" onClick={(event) => { event.stopPropagation(); editRecipe(recipe); }} variant="outline" className="rounded-xl border-stone-300 bg-white px-3 py-2 text-xs text-stone-800 hover:bg-stone-100">Bearbeiten</Button></div>
                           <div className="mt-2 flex flex-wrap items-center gap-3"><RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(selected, recipe.id, rating)} small /><span className="text-xs text-stone-500">Deine Bewertung · Ø {getRecipeAverage(recipe)}</span></div>
                         </button>
                       ))}
