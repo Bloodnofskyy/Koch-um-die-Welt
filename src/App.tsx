@@ -3241,16 +3241,7 @@ export default function WeltkochenApp() {
             </div>
           </button>
 
-          <nav className="hidden flex-wrap items-center gap-2 rounded-2xl border border-stone-200 bg-white/70 p-1.5 shadow-sm md:flex">
-            <button onClick={() => navigateTo("karte")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "karte" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Globe2 size={20} /> Weltkarte</button>
-            <button onClick={() => navigateTo("details")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "details" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BookOpen size={20} /> Rezept eintragen</button>
-            <button onClick={() => navigateTo("favoriten")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "favoriten" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><Heart size={20} /> Favoriten</button>
-            <button onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "kochplan" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><CalendarDays size={20} /> Kochplan</button>
-            {currentUser.role === "admin" && <button onClick={() => navigateTo("admin")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "admin" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BarChart3 size={20} /> Admin</button>}
-            <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
-            <button onClick={restartTutorial} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100" title="Tutorial erneut starten"><Sparkles size={20} /> Tutorial</button>
-            <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
-          </nav>
+
 
           <div className="flex items-center gap-3">
             <div className="hidden rounded-2xl border border-stone-200 bg-white shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
