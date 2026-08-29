@@ -4156,6 +4156,17 @@ export default function WeltkochenApp() {
         <Sparkles className="h-5 w-5" />
       </button>
 
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => navigateTo("admin")}
+          className="fixed bottom-[5.7rem] right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white/95 px-3 text-xs font-black text-stone-800 shadow-lg backdrop-blur md:hidden"
+          title="Admin öffnen"
+        >
+          <BarChart3 className="h-4 w-4" /> Admin
+        </button>
+      )}
+
       <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-stone-200 bg-[#fffaf0]/96 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.10)] backdrop-blur-xl md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
@@ -4189,13 +4200,6 @@ export default function WeltkochenApp() {
           </button>
         </div>
         {currentUser.role === "admin" && (
-          <button
-            type="button"
-            onClick={() => navigateTo("admin")}
-            className={`mx-auto mt-1 block rounded-lg px-3 py-1 text-[11px] font-bold ${page === "admin" ? "bg-stone-900 text-white" : "text-stone-500"}`}
-          >
-            Admin
-          </button>
         )}
       </nav>
 
