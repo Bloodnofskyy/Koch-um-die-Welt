@@ -629,3 +629,14 @@ select {
     z-index: 100 !important;
   }
 }
+
+/* ===== Bottom-Navigation Fix v6 =====
+   App.tsx besitzt bereits eine eigene Mobile-Navigation am Seitenende.
+   Alte Mobile-CSS-Regeln haben zusätzlich die Desktop-Navigation im Header
+   eingeblendet und dadurch zwei Bottom-Menüs erzeugt. */
+@media (max-width: 767px) {
+  header nav {
+    display: none !important;
+    position: static !important;
+  }
+}
