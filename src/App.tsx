@@ -1267,6 +1267,8 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityUserFilter, setActivityUserFilter] = useState("all");
   const [activityActionFilter, setActivityActionFilter] = useState("all");
+  const [adminUserSearch, setAdminUserSearch] = useState("");
+  const [trashSearch, setTrashSearch] = useState("");
 
   useEffect(() => {
     loadInviteCodes();
@@ -1588,8 +1590,28 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
     });
   }, [activities, activityUserFilter, activityActionFilter]);
 
+  const filteredAdminUsers = useMemo(() => {
+    const clean = adminUserSearch.trim().toLocaleLowerCase("de-DE");
+    if (!clean) return adminUsers;
+    return adminUsers.filter((user) =>
+      [user.display_name, user.username, user.email, user.role]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase("de-DE").includes(clean))
+    );
+  }, [adminUsers, adminUserSearch]);
+
+  const filteredDeletedRecipes = useMemo(() => {
+    const clean = trashSearch.trim().toLocaleLowerCase("de-DE");
+    if (!clean) return deletedRecipes;
+    return deletedRecipes.filter((recipe) =>
+      [recipe.dish, recipe.country, recipe.creator_name, recipe.creator_username, recipe.deletedByName]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase("de-DE").includes(clean))
+    );
+  }, [deletedRecipes, trashSearch]);
+
   return (
-    <main className="mx-auto max-w-4xl px-5 py-8">
+    <main className="mx-auto max-w-6xl px-5 py-8">
       <div className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Aktive Benutzer</p><p className="mt-1 text-3xl font-black">{adminStats.users}</p></div>
@@ -1681,6 +1703,10 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
           </CardContent>
         </Card>
 
+        <details  className="group">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border-2 border-stone-300 bg-white px-5 py-4 font-black shadow-sm">
+            Gelöschte Rezepte <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
+          </summary>
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -1701,6 +1727,16 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
               </Button>
             </div>
 
+            <div className="relative mt-4">
+              <Search className="absolute left-4 top-3.5 h-5 w-5 text-stone-400" />
+              <input
+                value={trashSearch}
+                onChange={(event) => setTrashSearch(event.target.value)}
+                placeholder="Papierkorb nach Rezept, Land oder Benutzer durchsuchen..."
+                className="w-full rounded-xl border border-stone-300 bg-white py-3 pl-12 pr-4 outline-none focus:border-amber-500"
+              />
+            </div>
+
             {trashMessage && (
               <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
                 {trashMessage}
@@ -1716,9 +1752,9 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
             <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
               {trashLoading ? (
                 <p className="p-4 text-stone-500">Papierkorb wird geladen...</p>
-              ) : deletedRecipes.length ? (
+              ) : filteredDeletedRecipes.length ? (
                 <div className="divide-y divide-stone-200">
-                  {deletedRecipes.map((recipe) => (
+                  {filteredDeletedRecipes.map((recipe) => (
                     <div key={recipe.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="font-black">{recipe.dish}</div>
@@ -1754,12 +1790,17 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
                   ))}
                 </div>
               ) : (
-                <p className="p-4 text-stone-500">Der Papierkorb ist leer.</p>
+                <p className="p-4 text-stone-500">Keine passenden gelöschten Rezepte gefunden.</p>
               )}
             </div>
           </CardContent>
         </Card>
+        </details>
 
+        <details  className="group">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border-2 border-stone-300 bg-white px-5 py-4 font-black shadow-sm">
+            Admin-Bereich <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
+          </summary>
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="p-6">
             <h2 className="text-4xl font-black">Admin-Bereich</h2>
@@ -1799,7 +1840,12 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
             </Button>
           </CardContent>
         </Card>
+        </details>
 
+        <details open className="group">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border-2 border-stone-300 bg-white px-5 py-4 font-black shadow-sm">
+            Benutzerverwaltung <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
+          </summary>
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -1820,6 +1866,16 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
               </Button>
             </div>
 
+            <div className="relative mt-4">
+              <Search className="absolute left-4 top-3.5 h-5 w-5 text-stone-400" />
+              <input
+                value={adminUserSearch}
+                onChange={(event) => setAdminUserSearch(event.target.value)}
+                placeholder="Benutzer nach Name, Benutzername oder E-Mail suchen..."
+                className="w-full rounded-xl border border-stone-300 bg-white py-3 pl-12 pr-4 outline-none focus:border-amber-500"
+              />
+            </div>
+
             {userMessage && (
               <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
                 {userMessage}
@@ -1835,9 +1891,9 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
             <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
               {usersLoading ? (
                 <p className="p-4 text-stone-500">Benutzer werden geladen...</p>
-              ) : adminUsers.length ? (
+              ) : filteredAdminUsers.length ? (
                 <div className="divide-y divide-stone-200">
-                  {adminUsers.map((user) => {
+                  {filteredAdminUsers.map((user) => {
                     const isMe = user.id === myUserId;
                     const isBlocked = Boolean(user.blocked);
                     return (
@@ -1906,12 +1962,17 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
                   })}
                 </div>
               ) : (
-                <p className="p-4 text-stone-500">Keine Benutzer gefunden.</p>
+                <p className="p-4 text-stone-500">Keine passenden Benutzer gefunden.</p>
               )}
             </div>
           </CardContent>
         </Card>
+        </details>
 
+        <details  className="group">
+          <summary className="mb-3 cursor-pointer list-none rounded-2xl border-2 border-stone-300 bg-white px-5 py-4 font-black shadow-sm">
+            Einladungscodes <span className="float-right text-stone-400 group-open:rotate-180">⌄</span>
+          </summary>
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -2016,6 +2077,7 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
             </div>
           </CardContent>
         </Card>
+        </details>
       </div>
     </main>
   );
@@ -2044,6 +2106,7 @@ export default function WeltkochenApp() {
   const [favoriteRecipeIds, setFavoriteRecipeIds] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
+  const [shoppingDraft, setShoppingDraft] = useState({ amount: "", unit: "", name: "" });
   const [mealPlan, setMealPlan] = useState([]);
   const [planDate, setPlanDate] = useState(new Date().toISOString().slice(0, 10));
   const [planRecipeId, setPlanRecipeId] = useState("");
@@ -2071,7 +2134,7 @@ export default function WeltkochenApp() {
             loadCloudState().catch(() => null),
             loadNormalizedContent(),
             supabase.from("weltkochen_favorites").select("recipe_id"),
-            supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at").order("created_at", { ascending: true }),
+            supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,source_key,created_at").order("created_at", { ascending: true }),
             supabase.from("weltkochen_meal_plan").select("id,plan_date,recipe_id,servings,note,created_at").order("plan_date", { ascending: true }),
           ]);
           if (!cancelled) {
@@ -2087,6 +2150,7 @@ export default function WeltkochenApp() {
         unit: item.unit || "",
         name: item.name,
         checked: Boolean(item.checked),
+        sourceKey: item.source_key || null,
       })));
       setMealPlan(mealPlanResult.data || []);
             setShoppingList((shoppingResult.data || []).map((item) => ({
@@ -2097,6 +2161,7 @@ export default function WeltkochenApp() {
               unit: item.unit || "",
               name: item.name,
               checked: Boolean(item.checked),
+              sourceKey: item.source_key || null,
             })));
             setMealPlan(mealPlanResult.data || []);
           }
@@ -2300,7 +2365,7 @@ export default function WeltkochenApp() {
       const [content, favoritesResult, shoppingResult, mealPlanResult] = await Promise.all([
         loadNormalizedContent(),
         supabase.from("weltkochen_favorites").select("recipe_id"),
-        supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at").order("created_at", { ascending: true }),
+        supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,source_key,created_at").order("created_at", { ascending: true }),
         supabase.from("weltkochen_meal_plan").select("id,plan_date,recipe_id,servings,note,created_at").order("plan_date", { ascending: true }),
       ]);
       setRecipes(content.recipes);
@@ -2316,7 +2381,7 @@ export default function WeltkochenApp() {
     if (!supabase || !currentUser?.id) return;
     const { data, error } = await supabase
       .from("weltkochen_shopping_items")
-      .select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at")
+      .select("id,recipe_id,recipe_name,amount,unit,name,checked,source_key,created_at")
       .order("created_at", { ascending: true });
     if (!error) {
       setShoppingList((data || []).map((item) => ({
@@ -2327,6 +2392,7 @@ export default function WeltkochenApp() {
         unit: item.unit || "",
         name: item.name,
         checked: Boolean(item.checked),
+        sourceKey: item.source_key || null,
       })));
     }
   }
@@ -2404,6 +2470,67 @@ export default function WeltkochenApp() {
     if (!error) await loadShoppingList();
   }
 
+  async function addManualShoppingItem() {
+    const name = shoppingDraft.name.trim();
+    if (!name) return;
+    const amount = shoppingDraft.amount === "" ? null : Number(shoppingDraft.amount);
+    const { error } = await supabase.from("weltkochen_shopping_items").insert({
+      user_id: currentUser.id,
+      recipe_id: null,
+      recipe_name: "Manuell",
+      amount: Number.isFinite(amount) ? amount : null,
+      unit: shoppingDraft.unit.trim(),
+      name,
+      checked: false,
+      source_key: null,
+    });
+    if (error) {
+      setStorageError("Eintrag konnte nicht gespeichert werden.");
+      return;
+    }
+    setShoppingDraft({ amount: "", unit: "", name: "" });
+    await loadShoppingList();
+  }
+
+  async function editCombinedShoppingItem(item) {
+    const name = window.prompt("Bezeichnung", item.name);
+    if (name === null || !name.trim()) return;
+    const amountText = window.prompt("Menge", item.amount === "" || item.amount == null ? "" : String(item.amount));
+    if (amountText === null) return;
+    const unit = window.prompt("Einheit", item.unit || "");
+    if (unit === null) return;
+
+    const firstId = item.ids[0];
+    const restIds = item.ids.slice(1);
+    const numericAmount = amountText.trim() === "" ? null : Number(amountText.replace(",", "."));
+
+    const { error } = await supabase
+      .from("weltkochen_shopping_items")
+      .update({
+        name: name.trim(),
+        amount: Number.isFinite(numericAmount) ? numericAmount : null,
+        unit: unit.trim(),
+        source_key: null,
+      })
+      .eq("id", firstId);
+
+    if (error) {
+      setStorageError("Eintrag konnte nicht geändert werden.");
+      return;
+    }
+
+    if (restIds.length) {
+      await supabase.from("weltkochen_shopping_items").delete().in("id", restIds);
+    }
+    await loadShoppingList();
+  }
+
+  async function deleteCombinedShoppingItem(item) {
+    if (!window.confirm(`${item.name} von der Einkaufsliste löschen?`)) return;
+    const { error } = await supabase.from("weltkochen_shopping_items").delete().in("id", item.ids);
+    if (!error) await loadShoppingList();
+  }
+
   async function clearShoppingList() {
     if (!shoppingList.length) return;
     if (!window.confirm("Einkaufsliste wirklich leeren?")) return;
@@ -2472,6 +2599,7 @@ export default function WeltkochenApp() {
           unit: item.unit || "",
           name: item.name,
           checked: false,
+          source_key: `week:${entry.id}:${normalizeIngredientName(item.name)}:${unitFamily(item.unit)}`,
         });
       }
     }
@@ -2481,7 +2609,9 @@ export default function WeltkochenApp() {
       return;
     }
 
-    const { error } = await supabase.from("weltkochen_shopping_items").insert(additions);
+    const { error } = await supabase
+      .from("weltkochen_shopping_items")
+      .upsert(additions, { onConflict: "user_id,source_key", ignoreDuplicates: true });
     if (error) {
       setStorageError(error.message);
       return;
@@ -3562,6 +3692,35 @@ export default function WeltkochenApp() {
               <Button type="button" variant="outline" onClick={() => setShoppingListOpen(false)} className="rounded-xl bg-white">Schließen</Button>
             </div>
 
+            <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-4">
+              <p className="mb-3 font-black">Manuell hinzufügen</p>
+              <div className="grid gap-2 sm:grid-cols-[100px_100px_1fr_auto]">
+                <input
+                  inputMode="decimal"
+                  value={shoppingDraft.amount}
+                  onChange={(event) => setShoppingDraft((current) => ({ ...current, amount: event.target.value.replace(",", ".").replace(/[^0-9.]/g, "") }))}
+                  placeholder="Menge"
+                  className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3"
+                />
+                <input
+                  value={shoppingDraft.unit}
+                  onChange={(event) => setShoppingDraft((current) => ({ ...current, unit: event.target.value }))}
+                  placeholder="Einheit"
+                  className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3"
+                />
+                <input
+                  value={shoppingDraft.name}
+                  onChange={(event) => setShoppingDraft((current) => ({ ...current, name: event.target.value }))}
+                  onKeyDown={(event) => { if (event.key === "Enter") addManualShoppingItem(); }}
+                  placeholder="z. B. Brot, Cola, Küchenrolle..."
+                  className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3"
+                />
+                <Button type="button" onClick={addManualShoppingItem} disabled={!shoppingDraft.name.trim()} className="rounded-xl bg-stone-900 text-white">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             <div className="mt-5 space-y-5">
               {Object.entries(groupedShoppingItems).map(([category, items]) => (
                 <div key={category}>
@@ -3587,6 +3746,10 @@ export default function WeltkochenApp() {
                             <b>{item.amount === "" ? "" : formatIngredientAmount(item.amount)} {item.unit}</b> {item.name}
                           </div>
                           <div className="text-xs text-stone-500">{item.recipeNames.join(" · ")}</div>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <button type="button" onClick={(event) => { event.preventDefault(); editCombinedShoppingItem(item); }} className="rounded-lg border border-stone-300 bg-white px-2 py-1 text-xs font-bold">Ändern</button>
+                          <button type="button" onClick={(event) => { event.preventDefault(); deleteCombinedShoppingItem(item); }} className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700">×</button>
                         </div>
                       </label>
                     ))}
