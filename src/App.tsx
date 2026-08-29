@@ -1983,54 +1983,58 @@ export default function WeltkochenApp() {
                       {form.image && <div className="mt-3 rounded-2xl border border-stone-200 bg-white p-3"><img src={form.image} alt="Rezeptvorschau" className="max-h-56 w-full rounded-xl object-cover" /><Button type="button" onClick={removeImage} variant="outline" className="mt-3 rounded-xl border-stone-300 bg-white text-stone-800 hover:bg-stone-100">Bild entfernen</Button></div>}
                     </label>
                     <div className="rounded-2xl border border-stone-200 bg-white p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="font-black">Zutaten</h3>
-                        <label className="flex items-center gap-2 text-sm font-semibold text-stone-600">
-                          Rezept für
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={form.servings || 4}
-                            onChange={(event) => setForm({ ...form, servings: Math.max(1, Number(event.target.value) || 1) })}
-                            className="w-20 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2"
-                          />
-                          Personen
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-black">Zutaten</h3>
+                        <label className="flex w-full items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700">
+                          <span>Rezept für</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={form.servings || 4}
+                              onChange={(event) => setForm({ ...form, servings: Math.max(1, Number(event.target.value) || 1) })}
+                              className="w-20 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2 text-center text-base font-bold"
+                            />
+                            <span>Personen</span>
+                          </div>
                         </label>
                       </div>
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-4 space-y-3">
                         {(Array.isArray(form.ingredients) ? form.ingredients : []).map((ingredient, index) => (
-                          <div key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_48px] gap-2 md:grid-cols-[90px_110px_minmax(0,1fr)_48px]">
+                          <div key={index} className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
                             <input
                               value={ingredient.name}
                               onChange={(event) => updateIngredient(index, "name", event.target.value)}
                               placeholder="Zutat, z. B. Orangensaft"
-                              className="col-span-3 min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-3 md:col-span-1"
+                              className="w-full min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base font-semibold"
                             />
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              inputMode="decimal"
-                              value={ingredient.amount}
-                              onChange={(event) => updateIngredient(index, "amount", event.target.value)}
-                              placeholder="Menge"
-                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-1"
-                            />
-                            <input
-                              value={ingredient.unit}
-                              onChange={(event) => updateIngredient(index, "unit", event.target.value)}
-                              placeholder="Einheit"
-                              className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base md:order-2"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeIngredientRow(index)}
-                              className="grid min-h-12 place-items-center rounded-xl border border-stone-300 bg-white md:order-4"
-                              aria-label="Zutat entfernen"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_48px] gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                inputMode="decimal"
+                                value={ingredient.amount}
+                                onChange={(event) => updateIngredient(index, "amount", event.target.value)}
+                                placeholder="Menge"
+                                className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base"
+                              />
+                              <input
+                                value={ingredient.unit}
+                                onChange={(event) => updateIngredient(index, "unit", event.target.value)}
+                                placeholder="Einheit"
+                                className="min-w-0 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-3 text-base"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeIngredientRow(index)}
+                                className="grid min-h-12 place-items-center rounded-xl border border-stone-300 bg-white"
+                                aria-label="Zutat entfernen"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
