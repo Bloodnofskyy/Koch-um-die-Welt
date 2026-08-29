@@ -2266,6 +2266,8 @@ export default function WeltkochenApp() {
   const [importError, setImportError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [recipeTableSearch, setRecipeTableSearch] = useState("");
+  const [recipeTableSort, setRecipeTableSort] = useState("rating_desc");
 
   const tutorialSteps = [
     { icon: "🌍", eyebrow: "Willkommen", title: "Deine kulinarische Weltreise beginnt.", text: "Hier kocht ihr euch Land für Land durch die Welt. Je mehr gute Rezepte ihr sammelt, desto grüner wird eure Karte." },
@@ -2397,6 +2399,46 @@ export default function WeltkochenApp() {
   const recipeEntries = useMemo(() => Object.entries(recipes).flatMap(([country, list]) => (
     Array.isArray(list) ? list : []
   ).filter((recipe) => recipe?.dish?.trim()).map((recipe) => [country, recipe])), [recipes]);
+
+  const recipeTableRows = useMemo(() => {
+    const clean = recipeTableSearch.trim().toLocaleLowerCase("de-DE");
+
+    const rows = recipeEntries
+      .map(([country, recipe]) => {
+        const average = getRecipeAverage(recipe);
+        const ratingValue = average === "–" ? 0 : Number(average);
+        const ratingCount = Object.values(recipe?.ratings || {}).map(Number).filter(Number.isFinite).length;
+        return {
+          country,
+          recipe,
+          ratingValue,
+          ratingCount,
+          dish: String(recipe?.dish || ""),
+          category: String(recipe?.category || "Hauptgericht"),
+          servings: Number(recipe?.servings) || 4,
+          createdBy: String(recipe?.createdByName || recipe?.createdBy || ""),
+        };
+      })
+      .filter((row) => {
+        if (!clean) return true;
+        return [
+          row.dish,
+          row.country,
+          row.category,
+          row.createdBy,
+        ].some((value) => value.toLocaleLowerCase("de-DE").includes(clean));
+      });
+
+    return rows.sort((a, b) => {
+      if (recipeTableSort === "rating_desc") return b.ratingValue - a.ratingValue || b.ratingCount - a.ratingCount || a.dish.localeCompare(b.dish, "de");
+      if (recipeTableSort === "rating_asc") return a.ratingValue - b.ratingValue || a.dish.localeCompare(b.dish, "de");
+      if (recipeTableSort === "country") return a.country.localeCompare(b.country, "de") || a.dish.localeCompare(b.dish, "de");
+      if (recipeTableSort === "dish") return a.dish.localeCompare(b.dish, "de");
+      if (recipeTableSort === "category") return a.category.localeCompare(b.category, "de") || a.dish.localeCompare(b.dish, "de");
+      if (recipeTableSort === "ratings_count") return b.ratingCount - a.ratingCount || b.ratingValue - a.ratingValue;
+      return 0;
+    });
+  }, [recipeEntries, recipeTableSearch, recipeTableSort]);
 
   const countriesWithRecipes = useMemo(() => Object.entries(recipes).filter(([, list]) => (
     isCountryCompleted(list, settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion)
@@ -3556,6 +3598,119 @@ export default function WeltkochenApp() {
           </aside>
           </div>
         </main>
+      ) : page === "rezepte" ? (
+        <main className="mx-auto max-w-7xl px-4 py-6 md:px-5 md:py-8">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.14em] text-amber-700">Rezeptarchiv</p>
+              <h2 className="mt-1 text-3xl font-black tracking-tight md:text-4xl">Alle Rezepte auf einen Blick</h2>
+              <p className="mt-2 max-w-2xl text-stone-600">Suche in allen Gerichten und sortiere nach Bewertung, Land, Kategorie oder Anzahl der Bewertungen.</p>
+            </div>
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-wide text-stone-400">Gefunden</p>
+              <p className="text-2xl font-black">{recipeTableRows.length}</p>
+            </div>
+          </div>
+
+          <Card className="mb-5 border border-stone-200 bg-white shadow-[0_12px_30px_rgba(76,54,28,.07)]">
+            <CardContent className="p-4">
+              <div className="grid gap-3 md:grid-cols-[1fr_280px]">
+                <label className="relative block">
+                  <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                  <input
+                    value={recipeTableSearch}
+                    onChange={(event) => setRecipeTableSearch(event.target.value)}
+                    placeholder="Rezept, Land, Kategorie oder Benutzer suchen..."
+                    className="w-full rounded-xl border border-stone-300 bg-[#fffaf0] py-3 pl-11 pr-4 font-semibold outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+                  />
+                </label>
+                <select
+                  value={recipeTableSort}
+                  onChange={(event) => setRecipeTableSort(event.target.value)}
+                  className="rounded-xl border border-stone-300 bg-[#fffaf0] px-4 py-3 font-black outline-none focus:border-amber-400"
+                >
+                  <option value="rating_desc">Bewertung: beste zuerst</option>
+                  <option value="rating_asc">Bewertung: niedrigste zuerst</option>
+                  <option value="ratings_count">Meiste Bewertungen</option>
+                  <option value="country">Land A–Z</option>
+                  <option value="dish">Rezept A–Z</option>
+                  <option value="category">Kategorie A–Z</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-[0_16px_40px_rgba(76,54,28,.08)]">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[900px] border-collapse text-left">
+                <thead className="bg-stone-900 text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Rezept</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Land</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Kategorie</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Bewertung</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Stimmen</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Personen</th>
+                    <th className="px-4 py-3 text-xs font-black uppercase tracking-wide">Erstellt von</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recipeTableRows.map(({ country, recipe, ratingValue, ratingCount, category, servings, createdBy }, index) => (
+                    <tr
+                      key={recipe.id}
+                      onClick={() => openRecipe(recipe, country)}
+                      className={`cursor-pointer border-b border-stone-100 transition hover:bg-amber-50 ${index % 2 ? "bg-stone-50/60" : "bg-white"}`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {recipe.image ? <img src={recipe.image} alt="" className="h-11 w-11 rounded-xl object-cover" /> : <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-100"><ChefHat className="h-5 w-5 text-stone-400" /></div>}
+                          <span className="font-black">{recipe.dish}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-stone-600">{country}</td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-black text-stone-600">{category}</span></td>
+                      <td className="px-4 py-3"><span className="font-black text-amber-600">★ {ratingCount ? ratingValue.toFixed(1) : "–"}</span></td>
+                      <td className="px-4 py-3 font-semibold text-stone-500">{ratingCount}</td>
+                      <td className="px-4 py-3 font-semibold text-stone-500">{servings}</td>
+                      <td className="px-4 py-3 font-semibold text-stone-500">{createdBy || "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y divide-stone-100 md:hidden">
+              {recipeTableRows.map(({ country, recipe, ratingValue, ratingCount, category, servings, createdBy }) => (
+                <button key={recipe.id} type="button" onClick={() => openRecipe(recipe, country)} className="flex w-full gap-3 p-4 text-left transition active:bg-amber-50">
+                  {recipe.image ? <img src={recipe.image} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" /> : <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-stone-100"><ChefHat className="h-6 w-6 text-stone-400" /></div>}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="truncate font-black">{recipe.dish}</h3>
+                        <p className="mt-0.5 text-sm font-semibold text-stone-500">{country} · {category}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">★ {ratingCount ? ratingValue.toFixed(1) : "–"}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold text-stone-500">
+                      <span>{ratingCount} Bewertungen</span>
+                      <span>·</span>
+                      <span>{servings} Pers.</span>
+                      {createdBy && <><span>·</span><span>{createdBy}</span></>}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {!recipeTableRows.length && (
+              <div className="p-10 text-center text-stone-500">
+                <Search className="mx-auto h-8 w-8 text-stone-300" />
+                <p className="mt-3 font-black">Kein Rezept gefunden</p>
+                <p className="mt-1 text-sm">Ändere deine Suche oder Sortierung.</p>
+              </div>
+            )}
+          </div>
+        </main>
       ) : page === "favoriten" ? (
         <main className="mx-auto max-w-6xl px-4 py-6 md:px-5 md:py-8">
           <div className="mb-6">
@@ -4156,41 +4311,70 @@ export default function WeltkochenApp() {
 
 
       <div className="fixed inset-x-0 bottom-0 z-[120] px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] md:hidden">
-        <nav className="mx-auto max-w-lg rounded-[1.7rem] border border-stone-200/90 bg-[#fffdf8] p-2 shadow-[0_18px_55px_rgba(55,42,25,.24)]">
-          <div className="grid grid-cols-5 gap-1">
-            {[
-              ["karte", "Karte", Globe2],
-              ["details", "Rezept", BookOpen],
-              ["favoriten", "Favoriten", Heart],
-              ["kochplan", "Kochplan", CalendarDays],
-            ].map(([target, label, Icon]) => (
+        <nav className="mx-auto max-w-lg overflow-hidden rounded-[1.7rem] border border-stone-200/90 bg-[#fffdf8] shadow-[0_18px_55px_rgba(55,42,25,.24)]">
+          <div className="overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max gap-1">
+              {[
+                ["karte", "Karte", Globe2],
+                ["details", "Rezept", BookOpen],
+                ["rezepte", "Alle Rezepte", UtensilsCrossed],
+                ["favoriten", "Favoriten", Heart],
+                ["kochplan", "Kochplan", CalendarDays],
+              ].map(([target, label, Icon]) => (
+                <button
+                  key={target}
+                  type="button"
+                  onClick={() => navigateTo(target)}
+                  className={`relative flex w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[10px] font-black transition-all ${
+                    page === target
+                      ? "bg-stone-900 text-white shadow-[0_8px_22px_rgba(28,25,23,.25)]"
+                      : "text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${page === target ? "text-amber-300" : ""}`} />
+                  <span className="max-w-full truncate">{label}</span>
+                </button>
+              ))}
+
               <button
-                key={target}
                 type="button"
-                onClick={() => navigateTo(target)}
-                className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-black transition-all ${
-                  page === target
-                    ? "bg-stone-900 text-white shadow-[0_8px_22px_rgba(28,25,23,.25)]"
-                    : "text-stone-500 hover:bg-stone-100 hover:text-stone-800"
-                }`}
+                onClick={() => setShoppingListOpen(true)}
+                className="relative flex w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[10px] font-black text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
               >
-                <Icon className={`h-5 w-5 ${page === target ? "text-amber-300" : ""}`} />
-                <span className="truncate">{label}</span>
+                <ShoppingCart className="h-5 w-5" />
+                <span>Einkauf</span>
+                {combinedShoppingItems.length > 0 && (
+                  <span className="absolute right-2 top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-stone-950 shadow-sm">
+                    {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+                  </span>
+                )}
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setShoppingListOpen(true)}
-              className="relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-black text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span>Einkauf</span>
-              {combinedShoppingItems.length > 0 && (
-                <span className="absolute right-2 top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-stone-950 shadow-sm">
-                  {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
-                </span>
+
+              <button
+                type="button"
+                onClick={restartTutorial}
+                className="flex w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[10px] font-black text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+              >
+                <Sparkles className="h-5 w-5" />
+                <span>Tutorial</span>
+              </button>
+
+              {currentUser.role === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo("admin")}
+                  className={`flex w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[10px] font-black transition ${
+                    page === "admin" ? "bg-stone-900 text-white shadow-[0_8px_22px_rgba(28,25,23,.25)]" : "text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                  }`}
+                >
+                  <BarChart3 className={`h-5 w-5 ${page === "admin" ? "text-amber-300" : ""}`} />
+                  <span>Admin</span>
+                </button>
               )}
-            </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-1 pb-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-stone-400">
+            <span>←</span><span>Menü wischen</span><span>→</span>
           </div>
         </nav>
       </div>
