@@ -16,6 +16,8 @@ import {
   Heart,
   ShoppingCart,
   Navigation,
+  CalendarDays,
+  Activity,
   Plus,
   Search,
   Star,
@@ -948,7 +950,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
   );
 }
 
-function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, isFavorite, onToggleFavorite, onAddToShoppingList }) {
+function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, isFavorite, onToggleFavorite, onAddToShoppingList, onPlanRecipe }) {
   const [viewServings, setViewServings] = useState(Number(openedRecipe?.servings) || 4);
 
   useEffect(() => {
@@ -1028,13 +1030,23 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, is
                     </div>
                   ))}
                 </div>
-                <Button
-                  type="button"
-                  onClick={() => onAddToShoppingList?.(openedRecipe, viewServings)}
-                  className="mt-4 w-full rounded-xl bg-stone-900 text-white"
-                >
-                  <ShoppingCart className="mr-2 h-4 w-4" /> Zur Einkaufsliste hinzufügen
-                </Button>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    onClick={() => onAddToShoppingList?.(openedRecipe, viewServings)}
+                    className="w-full rounded-xl bg-stone-900 text-white"
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" /> Einkaufsliste
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => onPlanRecipe?.(openedRecipe, viewServings)}
+                    variant="outline"
+                    className="w-full rounded-xl border-stone-300 bg-white"
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" /> Kochplan
+                  </Button>
+                </div>
               </div>
             )}
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
@@ -1150,13 +1162,52 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   const [trashMessage, setTrashMessage] = useState("");
   const [trashError, setTrashError] = useState("");
   const [adminStats, setAdminStats] = useState({ users: 0, recipes: 0, deleted: 0, suggestions: 0 });
+  const [activities, setActivities] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     loadInviteCodes();
     loadAdminUsers();
     loadDeletedRecipes();
     loadAdminStats();
+    loadActivities();
   }, []);
+
+  async function loadActivities() {
+    if (!supabase) return;
+    setActivityLoading(true);
+
+    const { data: rows, error } = await supabase
+      .from("weltkochen_activity_log")
+      .select("id,user_id,action,recipe_id,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      setActivities([]);
+      setActivityLoading(false);
+      return;
+    }
+
+    const userIds = [...new Set((rows || []).map((row) => row.user_id).filter(Boolean))];
+    let profilesById = {};
+    if (userIds.length) {
+      const { data: profiles } = await supabase
+        .from("weltkochen_profiles")
+        .select("id,username,display_name")
+        .in("id", userIds);
+      profilesById = Object.fromEntries((profiles || []).map((profile) => [
+        profile.id,
+        profile.display_name || profile.username || "Benutzer",
+      ]));
+    }
+
+    setActivities((rows || []).map((row) => ({
+      ...row,
+      userName: profilesById[row.user_id] || "System/gelöschter Benutzer",
+    })));
+    setActivityLoading(false);
+  }
 
   async function loadAdminStats() {
     if (!supabase) return;
@@ -1426,6 +1477,55 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
           <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Im Papierkorb</p><p className="mt-1 text-3xl font-black">{adminStats.deleted}</p></div>
           <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Vorschläge</p><p className="mt-1 text-3xl font-black">{adminStats.suggestions}</p></div>
         </div>
+
+        <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-2xl font-black"><Activity className="h-6 w-6" /> Aktivitätsverlauf</h3>
+                <p className="mt-1 text-sm text-stone-600">Die letzten 50 Änderungen an Rezepten und Bewertungen.</p>
+              </div>
+              <Button type="button" variant="outline" onClick={loadActivities} disabled={activityLoading} className="rounded-xl bg-white">
+                Aktualisieren
+              </Button>
+            </div>
+
+            <div className="mt-4 max-h-96 overflow-auto rounded-2xl border border-stone-200 bg-white">
+              {activityLoading ? (
+                <p className="p-4 text-stone-500">Aktivitäten werden geladen...</p>
+              ) : activities.length ? (
+                <div className="divide-y divide-stone-200">
+                  {activities.map((item) => {
+                    const actionNames = {
+                      recipe_created: "Rezept erstellt",
+                      recipe_updated: "Rezept bearbeitet",
+                      recipe_deleted: "Rezept gelöscht",
+                      recipe_restored: "Rezept wiederhergestellt",
+                      recipe_final_deleted: "Rezept endgültig gelöscht",
+                      recipe_rated: "Rezept bewertet",
+                    };
+                    return (
+                      <div key={item.id} className="p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-black">{actionNames[item.action] || item.action}</span>
+                          <span className="text-xs text-stone-500">{new Date(item.created_at).toLocaleString("de-DE")}</span>
+                        </div>
+                        <p className="mt-1 text-sm text-stone-600">
+                          {item.userName}
+                          {item.details?.dish ? ` · ${item.details.dish}` : ""}
+                          {item.details?.country ? ` · ${item.details.country}` : ""}
+                          {item.action === "recipe_rated" && item.details?.rating ? ` · ${item.details.rating}/5 Sterne` : ""}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="p-4 text-stone-500">Noch keine Aktivitäten vorhanden.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -1802,6 +1902,11 @@ export default function WeltkochenApp() {
   const [favoriteRecipeIds, setFavoriteRecipeIds] = useState([]);
   const [shoppingList, setShoppingList] = useState([]);
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
+  const [mealPlan, setMealPlan] = useState([]);
+  const [planDate, setPlanDate] = useState(new Date().toISOString().slice(0, 10));
+  const [planRecipeId, setPlanRecipeId] = useState("");
+  const [planServings, setPlanServings] = useState(4);
+  const [planNote, setPlanNote] = useState("");
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -1817,16 +1922,38 @@ export default function WeltkochenApp() {
         if (session && !cancelled) {
           const profile = await getMyProfile();
           setCurrentUser(profile);
-          const [cloud, content, favoritesResult] = await Promise.all([
+          const [cloud, content, favoritesResult, shoppingResult, mealPlanResult] = await Promise.all([
             loadCloudState().catch(() => null),
             loadNormalizedContent(),
             supabase.from("weltkochen_favorites").select("recipe_id"),
+            supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at").order("created_at", { ascending: true }),
+            supabase.from("weltkochen_meal_plan").select("id,plan_date,recipe_id,servings,note,created_at").order("plan_date", { ascending: true }),
           ]);
           if (!cancelled) {
             if (cloud?.settings) setSettings(cloud.settings);
             setRecipes(content.recipes);
             setSuggestions(content.suggestions);
             setFavoriteRecipeIds((favoritesResult.data || []).map((item) => item.recipe_id));
+      setShoppingList((shoppingResult.data || []).map((item) => ({
+        id: item.id,
+        recipeId: item.recipe_id,
+        recipeName: item.recipe_name,
+        amount: item.amount == null ? "" : Number(item.amount),
+        unit: item.unit || "",
+        name: item.name,
+        checked: Boolean(item.checked),
+      })));
+      setMealPlan(mealPlanResult.data || []);
+            setShoppingList((shoppingResult.data || []).map((item) => ({
+              id: item.id,
+              recipeId: item.recipe_id,
+              recipeName: item.recipe_name,
+              amount: item.amount == null ? "" : Number(item.amount),
+              unit: item.unit || "",
+              name: item.name,
+              checked: Boolean(item.checked),
+            })));
+            setMealPlan(mealPlanResult.data || []);
           }
         }
       } catch (error) {
@@ -1968,9 +2095,11 @@ export default function WeltkochenApp() {
   if (!currentUser) return <AuthScreen onLogin={async (user) => {
     setCurrentUser(user);
     try {
-      const [content, favoritesResult] = await Promise.all([
+      const [content, favoritesResult, shoppingResult, mealPlanResult] = await Promise.all([
         loadNormalizedContent(),
         supabase.from("weltkochen_favorites").select("recipe_id"),
+        supabase.from("weltkochen_shopping_items").select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at").order("created_at", { ascending: true }),
+        supabase.from("weltkochen_meal_plan").select("id,plan_date,recipe_id,servings,note,created_at").order("plan_date", { ascending: true }),
       ]);
       setRecipes(content.recipes);
       setSuggestions(content.suggestions);
@@ -1980,6 +2109,34 @@ export default function WeltkochenApp() {
     }
     setPage(user?.role === "admin" ? "admin" : "karte");
   }} storageError={storageError} />;
+
+  async function loadShoppingList() {
+    if (!supabase || !currentUser?.id) return;
+    const { data, error } = await supabase
+      .from("weltkochen_shopping_items")
+      .select("id,recipe_id,recipe_name,amount,unit,name,checked,created_at")
+      .order("created_at", { ascending: true });
+    if (!error) {
+      setShoppingList((data || []).map((item) => ({
+        id: item.id,
+        recipeId: item.recipe_id,
+        recipeName: item.recipe_name,
+        amount: item.amount == null ? "" : Number(item.amount),
+        unit: item.unit || "",
+        name: item.name,
+        checked: Boolean(item.checked),
+      })));
+    }
+  }
+
+  async function loadMealPlan() {
+    if (!supabase || !currentUser?.id) return;
+    const { data, error } = await supabase
+      .from("weltkochen_meal_plan")
+      .select("id,plan_date,recipe_id,servings,note,created_at")
+      .order("plan_date", { ascending: true });
+    if (!error) setMealPlan(data || []);
+  }
 
   async function logout() {
     await supabase.auth.signOut();
@@ -2013,30 +2170,84 @@ export default function WeltkochenApp() {
     }
   }
 
-  function addRecipeToShoppingList(recipe, servings) {
+  async function addRecipeToShoppingList(recipe, servings) {
     const baseServings = Number(recipe?.servings) || 4;
     const scale = Math.max(1, Number(servings) || baseServings) / baseServings;
     const additions = cleanIngredientRows(recipe?.ingredients).map((item) => ({
-      id: `${recipe.id}-${item.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      recipeId: recipe.id,
-      recipeName: recipe.dish,
-      amount: item.amount === "" ? "" : Number(item.amount) * scale,
+      user_id: currentUser.id,
+      recipe_id: recipe.id,
+      recipe_name: recipe.dish,
+      amount: item.amount === "" ? null : Number(item.amount) * scale,
       unit: item.unit || "",
       name: item.name,
       checked: false,
     }));
-    setShoppingList((current) => [...current, ...additions]);
+    if (!additions.length) return;
+    const { error } = await supabase.from("weltkochen_shopping_items").insert(additions);
+    if (error) {
+      setStorageError(error.message);
+      return;
+    }
+    await loadShoppingList();
     setShoppingListOpen(true);
   }
 
-  function toggleShoppingItem(id) {
-    setShoppingList((current) => current.map((item) => item.id === id ? { ...item, checked: !item.checked } : item));
+  async function toggleShoppingItem(id) {
+    const item = shoppingList.find((entry) => entry.id === id);
+    if (!item) return;
+    const { error } = await supabase
+      .from("weltkochen_shopping_items")
+      .update({ checked: !item.checked })
+      .eq("id", id);
+    if (!error) await loadShoppingList();
   }
 
-  function clearShoppingList() {
+  async function clearShoppingList() {
     if (!shoppingList.length) return;
-    if (window.confirm("Einkaufsliste wirklich leeren?")) setShoppingList([]);
+    if (!window.confirm("Einkaufsliste wirklich leeren?")) return;
+    const { error } = await supabase
+      .from("weltkochen_shopping_items")
+      .delete()
+      .eq("user_id", currentUser.id);
+    if (!error) await loadShoppingList();
   }
+
+  function openPlanForRecipe(recipe, servings) {
+    setPlanRecipeId(recipe.id);
+    setPlanServings(Math.max(1, Number(servings) || Number(recipe.servings) || 4));
+    setPage("kochplan");
+    setOpenedRecipe(null);
+  }
+
+  async function addMealPlanEntry() {
+    if (!planDate || !planRecipeId) return;
+    const { error } = await supabase.from("weltkochen_meal_plan").upsert({
+      user_id: currentUser.id,
+      plan_date: planDate,
+      recipe_id: planRecipeId,
+      servings: Math.max(1, Number(planServings) || 4),
+      note: planNote.trim(),
+    }, { onConflict: "user_id,plan_date,recipe_id" });
+
+    if (error) {
+      setStorageError(error.message);
+      return;
+    }
+    setPlanNote("");
+    await loadMealPlan();
+  }
+
+  async function removeMealPlanEntry(id) {
+    const { error } = await supabase.from("weltkochen_meal_plan").delete().eq("id", id);
+    if (!error) await loadMealPlan();
+  }
+
+  async function addPlannedMealToShoppingList(entry) {
+    const pair = recipeEntries.find(([, recipe]) => recipe.id === entry.recipe_id);
+    if (!pair) return;
+    await addRecipeToShoppingList(pair[1], entry.servings);
+  }
+
 
   async function handleImageUpload(event) {
     const file = event.target.files?.[0];
@@ -2419,6 +2630,8 @@ export default function WeltkochenApp() {
           <nav className="flex flex-wrap items-center gap-2 md:gap-6">
             <button onClick={() => setPage("karte")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "karte" ? "border-stone-900" : "border-transparent"}`}><Globe2 size={20} /> Weltkarte</button>
             <button onClick={() => setPage("details")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "details" ? "border-stone-900" : "border-transparent"}`}><BookOpen size={20} /> Rezept eintragen</button>
+            <button onClick={() => setPage("favoriten")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "favoriten" ? "border-stone-900" : "border-transparent"}`}><Heart size={20} /> Favoriten</button>
+            <button onClick={() => setPage("kochplan")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "kochplan" ? "border-stone-900" : "border-transparent"}`}><CalendarDays size={20} /> Kochplan</button>
             {currentUser.role === "admin" && <button onClick={() => setPage("admin")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "admin" ? "border-stone-900" : "border-transparent"}`}><BarChart3 size={20} /> Admin</button>}
             <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 border-b-2 border-transparent px-3 py-2 font-semibold"><ShoppingCart size={20} /> Einkauf {shoppingList.length ? `(${shoppingList.length})` : ""}</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
@@ -2630,6 +2843,97 @@ export default function WeltkochenApp() {
               </CardContent>
             </Card>
           </aside>
+        </main>
+      ) : page === "favoriten" ? (
+        <main className="mx-auto max-w-6xl px-5 py-8">
+          <div className="mb-6">
+            <p className="text-sm uppercase tracking-wide text-amber-700">Nur für {currentUser.displayName}</p>
+            <h2 className="text-4xl font-black">Meine Favoriten</h2>
+            <p className="mt-2 text-stone-600">Deine Favoriten sind nur deinem Benutzerkonto zugeordnet.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recipeEntries
+              .filter(([, recipe]) => favoriteRecipeIds.includes(recipe.id))
+              .map(([country, recipe]) => (
+                <button key={recipe.id} onClick={() => openRecipe(recipe, country)} className="overflow-hidden rounded-2xl border-2 border-stone-200 bg-white text-left transition hover:border-amber-400">
+                  {recipe.image ? <img src={recipe.image} alt={recipe.dish} className="h-40 w-full object-cover" /> : <div className="grid h-40 place-items-center bg-stone-100"><ChefHat className="h-10 w-10 text-stone-400" /></div>}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2"><h3 className="font-black">{recipe.dish}</h3><Heart className="h-5 w-5 shrink-0 fill-rose-500 text-rose-500" /></div>
+                    <p className="mt-1 text-sm text-stone-500">{country} · {recipe.category || "Hauptgericht"}</p>
+                    <p className="mt-2 text-sm font-bold">Ø {getRecipeAverage(recipe)} / 5</p>
+                  </div>
+                </button>
+              ))}
+          </div>
+
+          {!favoriteRecipeIds.length && (
+            <div className="rounded-2xl border-2 border-dashed border-stone-300 bg-white p-8 text-center text-stone-500">
+              Noch keine Favoriten. Öffne ein Rezept und tippe auf das Herz.
+            </div>
+          )}
+        </main>
+      ) : page === "kochplan" ? (
+        <main className="mx-auto max-w-6xl px-5 py-8">
+          <div className="mb-6">
+            <p className="text-sm uppercase tracking-wide text-amber-700">Planen</p>
+            <h2 className="text-4xl font-black">Mein Kochplan</h2>
+            <p className="mt-2 text-stone-600">Plane Rezepte für bestimmte Tage und übernimm die Zutaten direkt in deine Einkaufsliste.</p>
+          </div>
+
+          <Card className="border-2 border-stone-300 bg-[#fff8e9]">
+            <CardContent className="p-5">
+              <div className="grid gap-3 md:grid-cols-[160px_1fr_130px]">
+                <label>
+                  <span className="mb-1 block text-sm font-semibold">Datum</span>
+                  <input type="date" value={planDate} onChange={(event) => setPlanDate(event.target.value)} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-sm font-semibold">Rezept</span>
+                  <select value={planRecipeId} onChange={(event) => setPlanRecipeId(event.target.value)} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3">
+                    <option value="">Rezept auswählen...</option>
+                    {recipeEntries.map(([country, recipe]) => <option key={recipe.id} value={recipe.id}>{country} · {recipe.dish}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-sm font-semibold">Personen</span>
+                  <input type="number" min="1" max="100" value={planServings} onChange={(event) => setPlanServings(Math.max(1, Number(event.target.value) || 1))} className="w-full rounded-xl border-2 border-stone-300 bg-white p-3" />
+                </label>
+              </div>
+              <label className="mt-3 block">
+                <span className="mb-1 block text-sm font-semibold">Notiz (optional)</span>
+                <input value={planNote} onChange={(event) => setPlanNote(event.target.value)} placeholder="z. B. Gäste kommen um 18 Uhr" className="w-full rounded-xl border-2 border-stone-300 bg-white p-3" />
+              </label>
+              <Button type="button" onClick={addMealPlanEntry} disabled={!planRecipeId || !planDate} className="mt-4 rounded-xl bg-stone-900 text-white">
+                <Plus className="mr-2 h-4 w-4" /> Zum Kochplan hinzufügen
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="mt-6 space-y-3">
+            {mealPlan.map((entry) => {
+              const pair = recipeEntries.find(([, recipe]) => recipe.id === entry.recipe_id);
+              const recipe = pair?.[1];
+              const country = pair?.[0];
+              return (
+                <Card key={entry.id} className="border border-stone-300 bg-white">
+                  <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-amber-700">{new Date(`${entry.plan_date}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</p>
+                      <h3 className="mt-1 text-xl font-black">{recipe?.dish || "Rezept nicht mehr verfügbar"}</h3>
+                      <p className="text-sm text-stone-500">{country || ""} · {entry.servings} Personen{entry.note ? ` · ${entry.note}` : ""}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      {recipe && <Button type="button" variant="outline" onClick={() => addPlannedMealToShoppingList(entry)} className="rounded-xl bg-white"><ShoppingCart className="mr-2 h-4 w-4" /> Einkauf</Button>}
+                      {recipe && <Button type="button" variant="outline" onClick={() => openRecipe(recipe, country)} className="rounded-xl bg-white">Rezept öffnen</Button>}
+                      <Button type="button" variant="outline" onClick={() => removeMealPlanEntry(entry.id)} className="rounded-xl border-red-300 bg-red-50 text-red-700"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {!mealPlan.length && <p className="rounded-2xl border-2 border-dashed border-stone-300 bg-white p-8 text-center text-stone-500">Noch nichts geplant.</p>}
+          </div>
         </main>
       ) : (
         <main className="mx-auto max-w-7xl px-5 py-8">
@@ -2881,6 +3185,7 @@ export default function WeltkochenApp() {
         isFavorite={Boolean(openedRecipe && favoriteRecipeIds.includes(openedRecipe.id))}
         onToggleFavorite={toggleFavorite}
         onAddToShoppingList={addRecipeToShoppingList}
+        onPlanRecipe={openPlanForRecipe}
       />
 
       {shoppingListOpen && (
