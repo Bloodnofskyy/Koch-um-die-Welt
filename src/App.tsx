@@ -823,16 +823,11 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
         <ZoomableGroup
           zoom={position.zoom}
           center={position.coordinates}
-          onMoveEnd={(pos) => {
-            const [, lat] = pos.coordinates || position.coordinates;
-            setPosition({
-              ...pos,
-              coordinates: [
-                position.coordinates[0],
-                Math.max(-60, Math.min(75, lat)),
-              ],
-            });
-          }}
+          translateExtent={[
+            [-300, -220],
+            [1100, 820],
+          ]}
+          onMoveEnd={(pos) => setPosition(pos)}
         >
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
@@ -896,7 +891,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
       <div className="absolute bottom-4 left-4 z-20 flex items-center overflow-hidden rounded-2xl border border-stone-300 bg-[#fffaf0]/95 shadow-md backdrop-blur md:bottom-6 md:left-6">
         <button
           type="button"
-          onClick={() => changeZoom(0.45)}
+          onClick={() => changeZoom(0.3)}
           className="grid h-11 w-11 place-items-center border-r border-stone-300 text-xl font-black hover:bg-white"
           aria-label="Karte vergrößern"
         >
@@ -904,7 +899,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
         </button>
         <button
           type="button"
-          onClick={() => changeZoom(-0.45)}
+          onClick={() => changeZoom(-0.3)}
           className="grid h-11 w-11 place-items-center border-r border-stone-300 text-xl font-black hover:bg-white"
           aria-label="Karte verkleinern"
         >
