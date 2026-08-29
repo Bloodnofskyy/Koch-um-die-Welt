@@ -3273,7 +3273,7 @@ export default function WeltkochenApp() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] pb-28 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between xl:flex-nowrap">
           <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
             <div className="grid h-12 w-12 place-items-center rounded-2xl border border-stone-200 bg-white shadow-sm shadow-[0_8px_24px_rgba(70,50,30,.12)] md:h-16 md:w-16"><ChefHat className="h-6 w-6 md:h-8 md:w-8" /></div>
             <div>
@@ -3283,6 +3283,68 @@ export default function WeltkochenApp() {
           </button>
 
 
+
+          <nav className="hidden flex-wrap items-center gap-1.5 rounded-2xl border border-stone-200 bg-white/80 p-1.5 shadow-sm md:flex">
+            {[
+              ["karte", "Weltkarte", Globe2],
+              ["details", "Rezept eintragen", BookOpen],
+              ["rezepte", "Alle Rezepte", UtensilsCrossed],
+              ["favoriten", "Favoriten", Heart],
+              ["kochplan", "Kochplan", CalendarDays],
+            ].map(([target, label, Icon]) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() => navigateTo(target)}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition ${
+                  page === target
+                    ? "bg-stone-900 text-white shadow-sm"
+                    : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${page === target ? "text-amber-300" : ""}`} />
+                <span>{label}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setShoppingListOpen(true)}
+              className="relative flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span>Einkauf</span>
+              {combinedShoppingItems.length > 0 && (
+                <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-stone-950">
+                  {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={restartTutorial}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black text-stone-600 transition hover:bg-stone-100 hover:text-stone-900"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Tutorial</span>
+            </button>
+
+            {currentUser.role === "admin" && (
+              <button
+                type="button"
+                onClick={() => navigateTo("admin")}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition ${
+                  page === "admin"
+                    ? "bg-stone-900 text-white shadow-sm"
+                    : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                }`}
+              >
+                <BarChart3 className={`h-4 w-4 ${page === "admin" ? "text-amber-300" : ""}`} />
+                <span>Admin</span>
+              </button>
+            )}
+          </nav>
 
           <div className="flex items-center gap-3">
             <div className="hidden rounded-2xl border border-stone-200 bg-white shadow-sm px-4 py-2 text-sm font-semibold md:block">{currentUser.displayName}</div>
@@ -4372,9 +4434,6 @@ export default function WeltkochenApp() {
                 </button>
               )}
             </div>
-          </div>
-          <div className="flex items-center justify-center gap-1 pb-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-stone-400">
-            <span>←</span><span>Menü wischen</span><span>→</span>
           </div>
         </nav>
       </div>
