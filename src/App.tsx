@@ -922,7 +922,7 @@ function AuthScreen({ onLogin, storageError }) {
                       <LockKeyhole className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" />
                       <input required type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder={mode === "register" ? "Mindestens 8 Zeichen" : "Dein geheimes Rezept"} className="w-full rounded-xl border border-white/15 bg-black/25 py-3.5 pl-11 pr-12 font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" />
                       <button type="button" onClick={() => setShowPassword(v=>!v)} className="absolute right-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-stone-500 hover:bg-white/5 hover:text-white" aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}>
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        {showPassword ? <EyeOff className="h-[19px] w-[19px]" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </label>
@@ -3248,8 +3248,7 @@ export default function WeltkochenApp() {
             <button onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "kochplan" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><CalendarDays size={20} /> Kochplan</button>
             {currentUser.role === "admin" && <button onClick={() => navigateTo("admin")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "admin" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BarChart3 size={20} /> Admin</button>}
             <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
-            <button onClick={restartTutorial} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100" title="Tutorial erneut starten"><Sparkles size={20} /> Tutorial</button>
-            <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
+<span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -4155,9 +4154,15 @@ export default function WeltkochenApp() {
 
       </div>
 
-      <div className="relative z-[110] h-[86px] shrink-0 overflow-hidden border-t border-stone-200 bg-[#fffaf0] md:hidden">
-        <nav className="h-[86px] bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2">
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+      <div className="relative z-[110] shrink-0 overflow-visible border-t border-stone-300 bg-[#fffaf0] shadow-[0_-12px_30px_rgba(70,50,30,.10)] md:hidden">
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-14 h-14 bg-[#f7edda]"
+          aria-hidden="true"
+        />
+        <div className="relative overflow-hidden bg-[#fffaf0]">
+        <div className="absolute inset-x-0 top-0 h-2 bg-[#fffaf0]" />
+        <nav className="bg-[#fffaf0] px-2 pb-[max(.3rem,env(safe-area-inset-bottom))] pt-1.5">
+          <div className="mx-auto grid max-w-lg grid-cols-5 gap-0.5">
             {[
               ["karte", "Karte", Globe2],
               ["details", "Rezept", BookOpen],
@@ -4168,7 +4173,7 @@ export default function WeltkochenApp() {
                 key={target}
                 type="button"
                 onClick={() => navigateTo(target)}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
+                className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black transition ${page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"}`}
               >
                 <Icon className="h-5 w-5" />
                 <span className="truncate">{label}</span>
@@ -4177,7 +4182,7 @@ export default function WeltkochenApp() {
             <button
               type="button"
               onClick={() => setShoppingListOpen(true)}
-              className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold text-stone-500"
+              className="relative flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black text-stone-500"
             >
               <ShoppingCart className="h-5 w-5" />
               <span>Einkauf</span>
@@ -4189,6 +4194,7 @@ export default function WeltkochenApp() {
             </button>
           </div>
         </nav>
+        </div>
       </div>
 
     </div>
