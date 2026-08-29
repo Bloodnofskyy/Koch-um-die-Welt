@@ -909,6 +909,7 @@ export default function WeltkochenApp() {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState({ dish: "", category: "Hauptgericht", recipe: "", notes: "", image: "" });
   const [suggestionText, setSuggestionText] = useState("");
+  const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
   const [openedSuggestion, setOpenedSuggestion] = useState(null);
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [openedRecipe, setOpenedRecipe] = useState(null);
@@ -1098,6 +1099,7 @@ export default function WeltkochenApp() {
       [selected]: [...(Array.isArray(prev[selected]) ? prev[selected] : []), clean],
     }));
     setSuggestionText("");
+    setSuggestionDialogOpen(false);
   }
 
   function removeSuggestion(country, indexToRemove) {
@@ -1212,10 +1214,17 @@ export default function WeltkochenApp() {
                 <h3 className="mt-1 text-2xl font-black">{activeCountry}</h3>
                 <p className="mt-1 text-sm text-stone-500">{getQualifiedRecipesCount(activeRecipes, settings.minAverageRatingForCompletion)} / {settings.requiredRecipesPerCountry} Rezepte über {settings.minAverageRatingForCompletion} Sterne bis abgeschlossen</p>
                 <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
-                  <h4 className="font-black">Rezeptvorschläge</h4>
-                  <div className="mt-3 flex gap-2">
-                    <input value={suggestionText} onChange={(event) => setSuggestionText(event.target.value)} placeholder="z. B. Nationalgericht..." className="min-w-0 flex-1 rounded-xl border border-stone-300 bg-[#fffaf0] px-3 py-2 outline-none focus:border-amber-500" />
-                    <Button onClick={addSuggestion} className="rounded-xl bg-amber-300 text-stone-950 hover:bg-amber-200"><Plus className="mr-2 h-4 w-4" /> Rezeptvorschlag hinzufügen</Button>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-black">Rezeptvorschläge</h4>
+                    <Button
+                      onClick={() => {
+                        setSuggestionText("");
+                        setSuggestionDialogOpen(true);
+                      }}
+                      className="rounded-xl bg-amber-300 text-stone-950 hover:bg-amber-200"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Rezeptvorschlag hinzufügen
+                    </Button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(Array.isArray(suggestions[activeCountry]) ? suggestions[activeCountry] : []).map((suggestion, index) => (
@@ -1298,6 +1307,58 @@ export default function WeltkochenApp() {
             </aside>
           </div>
         </main>
+      )}
+
+      {suggestionDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={() => setSuggestionDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-sm uppercase tracking-wide text-amber-700">Rezeptvorschlag für</p>
+            <h2 className="mt-1 text-3xl font-black">{selected}</h2>
+            <p className="mt-3 text-stone-600">
+              Trage hier nur den Namen des Gerichts ein. Das eigentliche Rezept kannst du später daraus erstellen.
+            </p>
+
+            <label className="mt-5 block">
+              <span className="mb-1 block text-sm font-semibold text-stone-600">Vorschlag</span>
+              <input
+                autoFocus
+                value={suggestionText}
+                onChange={(event) => setSuggestionText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && suggestionText.trim()) addSuggestion();
+                }}
+                placeholder="z. B. Sauerbraten"
+                className="w-full rounded-2xl border-2 border-stone-300 bg-white p-3 outline-none focus:border-amber-500"
+              />
+            </label>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <Button
+                onClick={addSuggestion}
+                disabled={!suggestionText.trim()}
+                className="rounded-2xl bg-amber-400 px-5 py-5 text-stone-950 hover:bg-amber-300 disabled:opacity-50"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Hinzufügen
+              </Button>
+              <Button
+                onClick={() => {
+                  setSuggestionDialogOpen(false);
+                  setSuggestionText("");
+                }}
+                variant="outline"
+                className="rounded-2xl border-stone-300 bg-white px-5 py-5 text-stone-800 hover:bg-stone-100"
+              >
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {openedSuggestion && (
