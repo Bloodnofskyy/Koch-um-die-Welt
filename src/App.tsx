@@ -2266,7 +2266,6 @@ export default function WeltkochenApp() {
   const [importError, setImportError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [mobileNavTop, setMobileNavTop] = useState(0);
 
   const tutorialSteps = [
     { icon: "🌍", eyebrow: "Willkommen", title: "Deine kulinarische Weltreise beginnt.", text: "Hier kocht ihr euch Land für Land durch die Welt. Je mehr gute Rezepte ihr sammelt, desto grüner wird eure Karte." },
@@ -2309,35 +2308,6 @@ export default function WeltkochenApp() {
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [formIsDirty]);
-
-  useEffect(() => {
-    let raf = 0;
-
-    const updateMobileNavPosition = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const viewport = window.visualViewport;
-        const top = viewport
-          ? viewport.pageTop + viewport.height - 78
-          : window.scrollY + window.innerHeight - 78;
-        setMobileNavTop(Math.max(0, top));
-      });
-    };
-
-    updateMobileNavPosition();
-    window.addEventListener("scroll", updateMobileNavPosition, { passive: true });
-    window.addEventListener("resize", updateMobileNavPosition);
-    window.visualViewport?.addEventListener("scroll", updateMobileNavPosition);
-    window.visualViewport?.addEventListener("resize", updateMobileNavPosition);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", updateMobileNavPosition);
-      window.removeEventListener("resize", updateMobileNavPosition);
-      window.visualViewport?.removeEventListener("scroll", updateMobileNavPosition);
-      window.visualViewport?.removeEventListener("resize", updateMobileNavPosition);
-    };
-  }, []);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -3259,7 +3229,8 @@ export default function WeltkochenApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] pb-24 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] text-stone-900 md:block md:h-auto md:min-h-screen md:overflow-visible" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:overflow-visible">
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
@@ -4182,37 +4153,19 @@ export default function WeltkochenApp() {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={restartTutorial}
-        className="absolute right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white text-stone-800 shadow-lg md:hidden"
-        style={{ top: Math.max(0, mobileNavTop - 54) }}
-        title="Tutorial erneut starten"
-        aria-label="Tutorial erneut starten"
-      >
-        <Sparkles className="h-5 w-5" />
-      </button>
+      </div>
 
-      {currentUser.role === "admin" && (
-        <button
-          type="button"
-          onClick={() => navigateTo("admin")}
-          className="absolute right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 text-xs font-black text-stone-800 shadow-lg md:hidden"
-          style={{ top: Math.max(0, mobileNavTop - 54) }}
-          title="Admin öffnen"
-        >
-          <BarChart3 className="h-4 w-4" /> Admin
-        </button>
-      )}
-
-      <nav
-        className="absolute left-0 right-0 z-[110] border-t border-stone-200 bg-[#fffaf0] px-2 pt-2 md:hidden"
-        style={{
-          top: mobileNavTop,
-          minHeight: 78,
-          paddingBottom: "max(.55rem, env(safe-area-inset-bottom))",
-        }}
-      >
+      <nav className="relative z-[110] shrink-0 border-t border-stone-200 bg-[#fffaf0] px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(0,0,0,.10)] md:hidden">
+        <div className="absolute -top-12 right-3 flex gap-2">
+          {currentUser.role === "admin" && (
+            <button type="button" onClick={() => navigateTo("admin")} className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-black shadow-lg">
+              Admin
+            </button>
+          )}
+          <button type="button" onClick={restartTutorial} className="grid h-10 w-10 place-items-center rounded-xl border border-stone-200 bg-white shadow-lg" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
+            <Sparkles className="h-5 w-5" />
+          </button>
+        </div>
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
             ["karte", "Karte", Globe2],
