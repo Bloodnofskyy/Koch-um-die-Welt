@@ -22,6 +22,16 @@ import {
   Search,
   Star,
   Trash2,
+  Mail,
+  LockKeyhole,
+  UserRound,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Sparkles,
+  UtensilsCrossed,
+  Plane,
+  Compass,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -693,6 +703,7 @@ function AuthScreen({ onLogin, storageError }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -800,47 +811,286 @@ function AuthScreen({ onLogin, storageError }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7edda] px-5 py-10 text-stone-900">
-      <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[1fr_.9fr] md:items-center">
-        <section className="rounded-[1.75rem] border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] p-8 shadow-sm">
-          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-stone-900 bg-white"><ChefHat className="h-8 w-8" /></div>
-          <h1 className="text-4xl font-black uppercase tracking-wide md:text-6xl">Koch dich um die Welt</h1>
-          <p className="mt-4 text-lg text-stone-600">Sicherer Login über Supabase Auth.</p>
-          {storageError && <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{storageError}</p>}
+    <div className="relative min-h-screen overflow-hidden bg-[#efe3cc] text-stone-900">
+      {/* Weltreise-Hintergrund */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-28 -top-28 h-96 w-96 rounded-full bg-amber-300/30 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-[32rem] w-[32rem] rounded-full bg-sky-300/25 blur-3xl" />
+        <div className="absolute left-[42%] top-[6%] h-72 w-72 rounded-full bg-emerald-300/15 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.13]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(68,56,42,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(68,56,42,.22) 1px, transparent 1px)",
+            backgroundSize: "52px 52px",
+            maskImage: "linear-gradient(to bottom, black, transparent 88%)",
+          }}
+        />
+        <div className="absolute left-[8%] top-[14%] hidden rotate-[-12deg] rounded-2xl border-2 border-dashed border-stone-700/15 px-5 py-3 text-center lg:block">
+          <p className="text-[10px] font-black uppercase tracking-[.25em] text-stone-700/35">Passport</p>
+          <p className="text-2xl font-black text-stone-700/25">ITALIA</p>
+        </div>
+        <div className="absolute right-[8%] top-[17%] hidden rotate-[8deg] rounded-full border-2 border-stone-700/15 px-5 py-5 text-center lg:block">
+          <Plane className="mx-auto h-6 w-6 text-stone-700/25" />
+          <p className="mt-1 text-[9px] font-black uppercase tracking-[.18em] text-stone-700/30">Around the world</p>
+        </div>
+      </div>
+
+      <div className="relative mx-auto grid min-h-screen max-w-[1500px] lg:grid-cols-[1.12fr_.88fr]">
+        {/* Marken-/Motto-Seite */}
+        <section className="relative flex min-h-[46vh] flex-col justify-between overflow-hidden bg-stone-900 px-6 py-8 text-white sm:px-10 lg:min-h-screen lg:px-14 lg:py-12">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-28 -top-24 h-80 w-80 rounded-full border border-white/10" />
+            <div className="absolute -right-12 -top-6 h-52 w-52 rounded-full border border-white/10" />
+            <div className="absolute bottom-[-9rem] left-[-8rem] h-96 w-96 rounded-full bg-amber-400/15 blur-3xl" />
+            <div className="absolute right-[8%] top-[32%] h-40 w-40 rounded-full bg-sky-400/10 blur-3xl" />
+          </div>
+
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-stone-950 shadow-[0_10px_30px_rgba(251,191,36,.25)]">
+              <ChefHat className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-lg font-black tracking-tight">Koch dich um die Welt</p>
+              <p className="text-xs font-semibold text-stone-400">Die kulinarische Weltreise</p>
+            </div>
+          </div>
+
+          <div className="relative z-10 my-10 max-w-2xl lg:my-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-xs font-black uppercase tracking-[.14em] text-amber-300 backdrop-blur">
+              <Sparkles className="h-4 w-4" /> Kochen. Entdecken. Erinnern.
+            </div>
+            <h1 className="mt-5 text-4xl font-black leading-[.98] tracking-[-.04em] sm:text-5xl lg:text-6xl xl:text-7xl">
+              Die Welt passt
+              <span className="block text-amber-300">auf deinen Teller.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-7 text-stone-300 sm:text-lg">
+              Von Italien bis Japan, von Familienrezepten bis neuen Entdeckungen:
+              sammelt eure Gerichte und macht die Weltkarte gemeinsam grüner.
+            </p>
+
+            <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                <Compass className="h-5 w-5 text-amber-300" />
+                <p className="mt-3 text-sm font-black">Länder entdecken</p>
+                <p className="mt-1 text-xs leading-5 text-stone-400">Rezept für Rezept um die Welt.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                <UtensilsCrossed className="h-5 w-5 text-amber-300" />
+                <p className="mt-3 text-sm font-black">Gemeinsam kochen</p>
+                <p className="mt-1 text-xs leading-5 text-stone-400">Lieblingsrezepte sammeln & bewerten.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                <Globe2 className="h-5 w-5 text-amber-300" />
+                <p className="mt-3 text-sm font-black">Karte füllen</p>
+                <p className="mt-1 text-xs leading-5 text-stone-400">Jedes Gericht bringt euch weiter.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 hidden items-center gap-3 text-xs font-semibold text-stone-500 lg:flex">
+            <span className="h-px w-10 bg-stone-700" />
+            <span>Eine Reise ohne Koffer. Aber mit Hunger.</span>
+          </div>
         </section>
-        <form onSubmit={handleSubmit} className="rounded-[1.75rem] border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] p-6 shadow-sm">
-          <div className="mb-5 flex rounded-2xl bg-stone-100 p-1">
-            <button type="button" onClick={() => setMode("login")} className={`flex-1 rounded-xl px-4 py-3 font-bold ${mode === "login" ? "bg-white shadow-sm" : "text-stone-500"}`}>Anmelden</button>
-            <button type="button" onClick={() => setMode("register")} className={`flex-1 rounded-xl px-4 py-3 font-bold ${mode === "register" ? "bg-white shadow-sm" : "text-stone-500"}`}>Benutzer anlegen</button>
-          </div>
-          <h2 className="text-xl font-black tracking-tight md:text-2xl">{mode === "login" ? "Einloggen" : "Neues Profil"}</h2>
-          <div className="mt-5 space-y-4">
-            {mode === "register" && <>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Anzeigename</span><input required value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" className="w-full rounded-xl border border-stone-300 bg-white p-3 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100" /></label>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Benutzername</span><input required value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" className="w-full rounded-xl border border-stone-300 bg-white p-3 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100" /></label>
-              <label className="block"><span className="mb-1 block text-sm font-semibold">Einladungscode</span><input required value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} autoComplete="off" className="w-full rounded-xl border border-stone-300 bg-white p-3 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 uppercase" /></label>
-            </>}
-            <label className="block"><span className="mb-1 block text-sm font-semibold">E-Mail</span><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-stone-300 bg-white p-3 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100" /></label>
-            <label className="block"><span className="mb-1 block text-sm font-semibold">Passwort</span><input required type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} className="w-full rounded-xl border border-stone-300 bg-white p-3 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100" /></label>
-            {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{success}</div>}
-            {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}
-            <Button
-              type="submit"
-              disabled={
-                busy ||
-                (mode === "register" &&
-                  (!displayName.trim() ||
-                    !username.trim() ||
-                    !inviteCode.trim() ||
-                    !email.trim() ||
-                    password.length < 8))
-              }
-              className="w-full rounded-2xl bg-stone-900 py-6 text-white disabled:cursor-not-allowed disabled:opacity-50"
+
+        {/* Login-Fenster */}
+        <section className="relative flex items-center justify-center px-4 py-7 sm:px-8 lg:px-12">
+          <div className="w-full max-w-xl">
+            <div className="mb-5 flex items-center justify-between px-1 lg:hidden">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[.14em] text-amber-700">Willkommen</p>
+                <p className="text-lg font-black">Bereit für die nächste Station?</p>
+              </div>
+              <Globe2 className="h-8 w-8 text-stone-400" />
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[#fffaf0]/90 p-5 shadow-[0_30px_80px_rgba(60,43,24,.18)] backdrop-blur-xl sm:p-7"
             >
-              {busy ? "Bitte warten..." : mode === "login" ? "Anmelden" : "Benutzer erstellen"}
-            </Button>
+              <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+
+              <div className="relative">
+                <div className="mb-6 flex rounded-2xl border border-stone-200 bg-stone-100/90 p-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMode("login"); setError(""); }}
+                    className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${mode === "login" ? "bg-white text-stone-950 shadow-sm" : "text-stone-500 hover:text-stone-800"}`}
+                  >
+                    Anmelden
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode("register"); setError(""); }}
+                    className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${mode === "register" ? "bg-white text-stone-950 shadow-sm" : "text-stone-500 hover:text-stone-800"}`}
+                  >
+                    Neue Reise starten
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-xs font-black uppercase tracking-[.16em] text-amber-700">
+                    {mode === "login" ? "Willkommen zurück" : "Dein Reisepass"}
+                  </p>
+                  <h2 className="mt-1 text-3xl font-black tracking-tight">
+                    {mode === "login" ? "Weiter geht die Weltreise." : "Konto erstellen."}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-stone-500">
+                    {mode === "login"
+                      ? "Melde dich an und spring direkt zurück zu eurer kulinarischen Karte."
+                      : "Mit Einladungscode bekommst du deinen Platz in eurer gemeinsamen Kochrunde."}
+                  </p>
+                </div>
+
+                <div className="space-y-3.5">
+                  {mode === "register" && (
+                    <>
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Anzeigename</span>
+                        <div className="relative">
+                          <UserRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                          <input
+                            required
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            autoComplete="name"
+                            placeholder="Wie sollen wir dich nennen?"
+                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Benutzername</span>
+                        <div className="relative">
+                          <Compass className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                          <input
+                            required
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            autoComplete="username"
+                            placeholder="Dein Benutzername"
+                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Einladungscode</span>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                          <input
+                            required
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                            autoComplete="off"
+                            placeholder="Dein Ticket zur Weltreise"
+                            className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-mono font-black uppercase tracking-widest outline-none transition placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
+                      </label>
+                    </>
+                  )}
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">E-Mail</span>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                      <input
+                        required
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="email"
+                        placeholder="name@beispiel.de"
+                        className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-4 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                      />
+                    </div>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-stone-500">Passwort</span>
+                    <div className="relative">
+                      <LockKeyhole className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400" />
+                      <input
+                        required
+                        type={showPassword ? "text" : "password"}
+                        minLength={8}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete={mode === "register" ? "new-password" : "current-password"}
+                        placeholder={mode === "register" ? "Mindestens 8 Zeichen" : "Dein Passwort"}
+                        className="w-full rounded-2xl border border-stone-200 bg-white/95 py-3.5 pl-11 pr-12 font-semibold outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        className="absolute right-2.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-xl text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+                        aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </label>
+
+                  {success && (
+                    <div className="flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm font-semibold text-emerald-800">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                      <span>{success}</span>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm font-semibold text-red-700">
+                      {error}
+                    </div>
+                  )}
+                  {storageError && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm font-semibold text-red-700">
+                      {storageError}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={
+                      busy ||
+                      (mode === "register" &&
+                        (!displayName.trim() ||
+                          !username.trim() ||
+                          !inviteCode.trim() ||
+                          !email.trim() ||
+                          password.length < 8))
+                    }
+                    className="group mt-1 w-full rounded-2xl bg-stone-900 py-6 text-base font-black text-white shadow-[0_12px_30px_rgba(28,25,23,.18)] transition hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-[0_16px_38px_rgba(28,25,23,.24)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      {busy ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          Bitte warten...
+                        </>
+                      ) : mode === "login" ? (
+                        <>
+                          Weltreise fortsetzen <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" />
+                        </>
+                      ) : (
+                        <>
+                          Reisepass erstellen <Plane className="h-5 w-5 transition group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            <div className="mt-5 flex items-center justify-center gap-2 text-center text-xs font-semibold text-stone-500">
+              <Globe2 className="h-4 w-4" />
+              <span>Koch dich um die Welt · Eure Rezepte, eure Reise.</span>
+            </div>
           </div>
-        </form>
+        </section>
       </div>
     </div>
   );
