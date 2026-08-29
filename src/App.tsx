@@ -3287,7 +3287,8 @@ export default function WeltkochenApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] pb-28 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] text-stone-900 md:block md:h-auto md:min-h-screen md:overflow-visible" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:overflow-visible">
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
         <div className="mx-auto flex max-w-[1500px] flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between xl:flex-nowrap">
           <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
@@ -4388,8 +4389,10 @@ export default function WeltkochenApp() {
       )}
 
 
-      <div className="fixed inset-x-0 bottom-0 z-[120] px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] md:hidden">
-        <nav className="mx-auto max-w-lg overflow-hidden rounded-[1.7rem] border border-stone-200/90 bg-[#fffdf8] shadow-[0_18px_55px_rgba(55,42,25,.24)]">
+      </div>
+
+      <div className="relative z-[120] shrink-0 bg-[#f7edda] px-3 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-1.5 md:hidden">
+        <nav className="mx-auto max-w-lg overflow-hidden rounded-[1.55rem] border border-stone-200 bg-[#fffdf8] shadow-[0_10px_28px_rgba(55,42,25,.16)]">
           <div className="overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-max gap-1">
               {[
