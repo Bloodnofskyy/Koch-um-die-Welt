@@ -3229,8 +3229,7 @@ export default function WeltkochenApp() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] text-stone-900 md:block md:h-auto md:min-h-screen md:overflow-visible" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:overflow-visible">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffaf0_0%,_#f7edda_42%,_#efe0c7_100%)] pb-28 text-stone-900 md:pb-0" style={{ fontFamily: "ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <header className="sticky top-0 z-[90] border-b border-stone-300/80 bg-[#fffaf0]/90 px-4 py-3 shadow-sm backdrop-blur-xl md:px-5 md:py-4">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <button onClick={() => navigateTo("karte")} className="flex items-center gap-4 text-left">
@@ -3259,41 +3258,7 @@ export default function WeltkochenApp() {
         </div>
       </header>
 
-      <nav className="sticky top-[145px] z-[85] border-b border-stone-200 bg-[#fffaf0] px-2 py-1.5 shadow-sm md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-          {[
-            ["karte", "Karte", Globe2],
-            ["details", "Rezept", BookOpen],
-            ["favoriten", "Favoriten", Heart],
-            ["kochplan", "Kochplan", CalendarDays],
-          ].map(([target, label, Icon]) => (
-            <button
-              key={target}
-              type="button"
-              onClick={() => navigateTo(target)}
-              className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black transition ${
-                page === target ? "bg-stone-900 text-white shadow-sm" : "text-stone-500"
-              }`}
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setShoppingListOpen(true)}
-            className="relative flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-black text-stone-500"
-          >
-            <ShoppingCart className="h-[18px] w-[18px]" />
-            <span>Einkauf</span>
-            {combinedShoppingItems.length > 0 && (
-              <span className="absolute right-1 top-0 grid min-h-4 min-w-4 place-items-center rounded-full bg-stone-900 px-1 text-[9px] text-white">
-                {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
+
 
       {storageError && currentUser && (
         <div className="mx-auto mt-4 max-w-7xl px-5">
@@ -4189,8 +4154,46 @@ export default function WeltkochenApp() {
         </div>
       )}
 
-      </div>
 
+      <div className="fixed inset-x-0 bottom-0 z-[120] px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] md:hidden">
+        <nav className="mx-auto max-w-lg rounded-[1.7rem] border border-stone-200/90 bg-[#fffdf8] p-2 shadow-[0_18px_55px_rgba(55,42,25,.24)]">
+          <div className="grid grid-cols-5 gap-1">
+            {[
+              ["karte", "Karte", Globe2],
+              ["details", "Rezept", BookOpen],
+              ["favoriten", "Favoriten", Heart],
+              ["kochplan", "Kochplan", CalendarDays],
+            ].map(([target, label, Icon]) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() => navigateTo(target)}
+                className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-black transition-all ${
+                  page === target
+                    ? "bg-stone-900 text-white shadow-[0_8px_22px_rgba(28,25,23,.25)]"
+                    : "text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${page === target ? "text-amber-300" : ""}`} />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setShoppingListOpen(true)}
+              className="relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-black text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span>Einkauf</span>
+              {combinedShoppingItems.length > 0 && (
+                <span className="absolute right-2 top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-stone-950 shadow-sm">
+                  {combinedShoppingItems.length > 99 ? "99+" : combinedShoppingItems.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }
