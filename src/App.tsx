@@ -2264,6 +2264,18 @@ export default function WeltkochenApp() {
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const tutorialSteps = [
+    { icon: "🌍", eyebrow: "Willkommen", title: "Deine kulinarische Weltreise beginnt.", text: "Hier kocht ihr euch Land für Land durch die Welt. Je mehr gute Rezepte ihr sammelt, desto grüner wird eure Karte." },
+    { icon: "🗺️", eyebrow: "Die Weltkarte", title: "Jedes Land erzählt eine Geschichte.", text: "Wähle ein Land auf der Karte aus. Farben zeigen dir, wo schon Rezepte vorhanden sind, welche Länder abgeschlossen sind und wo noch Vorschläge warten." },
+    { icon: "🍳", eyebrow: "Rezepte", title: "Selbst eintragen oder importieren.", text: "Du kannst Rezepte manuell anlegen oder eine Rezept-URL importieren. Zutaten, Personenanzahl und Mengen werden automatisch mitgedacht." },
+    { icon: "⭐", eyebrow: "Bewerten", title: "Gute Rezepte bringen Länder voran.", text: "Bewertet eure Gerichte. Sobald ein Land genug starke Rezepte über der eingestellten Mindestbewertung hat, gilt es als abgeschlossen." },
+    { icon: "❤️", eyebrow: "Merken & planen", title: "Favoriten und Kochplan.", text: "Speichere Lieblingsrezepte mit dem Herz und plane sie direkt für bestimmte Tage in deinem Kochplan ein." },
+    { icon: "🛒", eyebrow: "Einkaufen", title: "Aus Rezepten wird eine Einkaufsliste.", text: "Zutaten können direkt übernommen werden. Mengen werden zusammengeführt und bei geplanten Gerichten passend zur Personenanzahl berechnet." },
+    { icon: "🚀", eyebrow: "Los geht's", title: "Jetzt wird die Welt erkocht.", text: "Such dir ein Land aus, trag das erste Rezept ein und los geht die Reise. Das Tutorial kannst du später jederzeit erneut starten." },
+  ];
 
   const formIsDirty = useMemo(
     () => recipeFormSignature(form) !== savedFormSignature,
@@ -2296,6 +2308,27 @@ export default function WeltkochenApp() {
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [formIsDirty]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const tutorialKey = `weltkochen_tutorial_seen_${currentUser.id}`;
+    if (!window.localStorage.getItem(tutorialKey)) {
+      setTutorialStep(0);
+      setTutorialOpen(true);
+    }
+  }, [currentUser?.id]);
+
+  function closeTutorial(markSeen = true) {
+    if (markSeen && currentUser?.id) {
+      window.localStorage.setItem(`weltkochen_tutorial_seen_${currentUser.id}`, "1");
+    }
+    setTutorialOpen(false);
+  }
+
+  function restartTutorial() {
+    setTutorialStep(0);
+    setTutorialOpen(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -3214,6 +3247,7 @@ export default function WeltkochenApp() {
             <button onClick={() => navigateTo("kochplan")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "kochplan" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><CalendarDays size={20} /> Kochplan</button>
             {currentUser.role === "admin" && <button onClick={() => navigateTo("admin")} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${page === "admin" ? "bg-stone-900 text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}><BarChart3 size={20} /> Admin</button>}
             <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100"><ShoppingCart size={20} /> Einkauf {combinedShoppingItems.length ? `(${combinedShoppingItems.length})` : ""}</button>
+            <button onClick={restartTutorial} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-100" title="Tutorial erneut starten"><Sparkles size={20} /> Tutorial</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
 
@@ -4079,6 +4113,49 @@ export default function WeltkochenApp() {
           </div>
         </div>
       )}
+      {tutorialOpen && currentUser && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-stone-950/70 p-0 backdrop-blur-md sm:items-center sm:p-5">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#fffaf0] text-stone-900 shadow-[0_35px_100px_rgba(0,0,0,.35)] sm:rounded-[2rem]">
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-stone-200">
+              <div className="h-full bg-amber-400 transition-all duration-300" style={{ width: `${((tutorialStep + 1) / tutorialSteps.length) * 100}%` }} />
+            </div>
+            <div className="relative overflow-hidden bg-stone-900 p-6 text-white sm:p-8">
+              <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-amber-400/15 blur-3xl" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-300">{tutorialSteps[tutorialStep].eyebrow} · {tutorialStep + 1}/{tutorialSteps.length}</p>
+                  <h2 className="mt-2 max-w-xl text-2xl font-black tracking-tight sm:text-3xl">{tutorialSteps[tutorialStep].title}</h2>
+                </div>
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-3xl">{tutorialSteps[tutorialStep].icon}</div>
+              </div>
+            </div>
+            <div className="p-6 sm:p-8">
+              <p className="text-base leading-7 text-stone-600">{tutorialSteps[tutorialStep].text}</p>
+              <div className="mt-7 flex flex-wrap items-center gap-2">
+                {tutorialSteps.map((step, index) => (
+                  <button key={`${step.title}-${index}`} type="button" onClick={() => setTutorialStep(index)} className={`h-2.5 rounded-full transition-all ${index === tutorialStep ? "w-8 bg-amber-400" : "w-2.5 bg-stone-300 hover:bg-stone-400"}`} aria-label={`Tutorial Schritt ${index + 1}`} />
+                ))}
+              </div>
+              <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button type="button" onClick={() => closeTutorial(true)} className="rounded-xl px-4 py-3 text-sm font-bold text-stone-500 transition hover:bg-stone-100 hover:text-stone-800">Tutorial überspringen</button>
+                <div className="flex gap-2">
+                  {tutorialStep > 0 && <button type="button" onClick={() => setTutorialStep((step) => Math.max(0, step - 1))} className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-black shadow-sm hover:bg-stone-50 sm:flex-none">← Zurück</button>}
+                  {tutorialStep < tutorialSteps.length - 1 ? (
+                    <button type="button" onClick={() => setTutorialStep((step) => Math.min(tutorialSteps.length - 1, step + 1))} className="flex-1 rounded-xl bg-stone-900 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-stone-800 sm:flex-none">Weiter →</button>
+                  ) : (
+                    <button type="button" onClick={() => closeTutorial(true)} className="flex-1 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-stone-950 shadow-sm hover:bg-amber-300 sm:flex-none">🚀 Weltreise starten</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button type="button" onClick={restartTutorial} className="fixed bottom-[5.7rem] right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white/95 text-stone-800 shadow-lg backdrop-blur md:hidden" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
+        <Sparkles className="h-5 w-5" />
+      </button>
+
       <nav className="fixed inset-x-0 bottom-0 z-[110] border-t border-stone-200 bg-[#fffaf0]/96 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_32px_rgba(0,0,0,.10)] backdrop-blur-xl md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {[
