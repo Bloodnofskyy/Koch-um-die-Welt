@@ -13,6 +13,9 @@ import {
   MapPin,
   Link2,
   ExternalLink,
+  Heart,
+  ShoppingCart,
+  Navigation,
   Plus,
   Search,
   Star,
@@ -746,6 +749,17 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
     setPosition({ coordinates: config.center, zoom: config.zoom });
   }
 
+  function centerSelectedCountry() {
+    const config = countryZooms[selected];
+    if (config) {
+      setPosition({ coordinates: config.center, zoom: config.zoom });
+      return;
+    }
+    const region = regionRows.find((item) => item.countries.includes(selected));
+    const fallback = regionZooms[region?.name] || regionZooms["Alle Kontinente"];
+    setPosition({ coordinates: fallback.center, zoom: Math.max(fallback.zoom, 2.4) });
+  }
+
   function handleMouseDown(event) {
     if (event.button === 1) {
       event.preventDefault();
@@ -912,6 +926,15 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
         >
           Reset
         </button>
+        <button
+          type="button"
+          onClick={centerSelectedCountry}
+          className="grid h-11 w-11 place-items-center border-l border-stone-300 hover:bg-white"
+          title="Zum ausgewählten Land"
+          aria-label="Zum ausgewählten Land"
+        >
+          <Navigation className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="absolute bottom-4 right-4 z-20 hidden rounded-2xl border border-stone-300 bg-[#fffaf0]/95 px-3 py-2 shadow-md backdrop-blur md:block">
@@ -925,7 +948,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
   );
 }
 
-function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit }) {
+function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, isFavorite, onToggleFavorite, onAddToShoppingList }) {
   const [viewServings, setViewServings] = useState(Number(openedRecipe?.servings) || 4);
 
   useEffect(() => {
@@ -957,7 +980,16 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit }) 
             {openedRecipe.image && <img src={openedRecipe.image} alt={openedRecipe.dish} className="mt-4 max-h-72 w-full rounded-2xl object-cover" />}
             <p className="mt-1 text-stone-500">{openedRecipe.category || "Hauptgericht"} · erstellt von {openedRecipe.createdByName || openedRecipe.createdBy}</p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              onClick={() => onToggleFavorite?.(openedRecipe)}
+              variant="outline"
+              className={`rounded-2xl border-stone-300 ${isFavorite ? "bg-rose-50 text-rose-700" : "bg-white"}`}
+              title={isFavorite ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+            </Button>
             <Button type="button" onClick={() => onEdit?.(openedRecipe)} className="rounded-2xl bg-stone-900 text-white">
               Bearbeiten
             </Button>
@@ -996,6 +1028,13 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit }) 
                     </div>
                   ))}
                 </div>
+                <Button
+                  type="button"
+                  onClick={() => onAddToShoppingList?.(openedRecipe, viewServings)}
+                  className="mt-4 w-full rounded-xl bg-stone-900 text-white"
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" /> Zur Einkaufsliste hinzufügen
+                </Button>
               </div>
             )}
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
@@ -1110,12 +1149,30 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   const [trashActionId, setTrashActionId] = useState("");
   const [trashMessage, setTrashMessage] = useState("");
   const [trashError, setTrashError] = useState("");
+  const [adminStats, setAdminStats] = useState({ users: 0, recipes: 0, deleted: 0, suggestions: 0 });
 
   useEffect(() => {
     loadInviteCodes();
     loadAdminUsers();
     loadDeletedRecipes();
+    loadAdminStats();
   }, []);
+
+  async function loadAdminStats() {
+    if (!supabase) return;
+    const [usersResult, recipesResult, deletedResult, suggestionsResult] = await Promise.all([
+      supabase.from("weltkochen_profiles").select("id", { count: "exact", head: true }),
+      supabase.from("weltkochen_recipes").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      supabase.from("weltkochen_recipes").select("id", { count: "exact", head: true }).not("deleted_at", "is", null),
+      supabase.from("weltkochen_suggestions").select("id", { count: "exact", head: true }),
+    ]);
+    setAdminStats({
+      users: usersResult.count || 0,
+      recipes: recipesResult.count || 0,
+      deleted: deletedResult.count || 0,
+      suggestions: suggestionsResult.count || 0,
+    });
+  }
 
   async function loadInviteCodes() {
     if (!supabase) return;
@@ -1363,6 +1420,13 @@ function AdminPanel({ settings, onUpdateSettings, onExportBackup, onTrashChanged
   return (
     <main className="mx-auto max-w-4xl px-5 py-8">
       <div className="space-y-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Aktive Benutzer</p><p className="mt-1 text-3xl font-black">{adminStats.users}</p></div>
+          <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Rezepte</p><p className="mt-1 text-3xl font-black">{adminStats.recipes}</p></div>
+          <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Im Papierkorb</p><p className="mt-1 text-3xl font-black">{adminStats.deleted}</p></div>
+          <div className="rounded-2xl border border-stone-300 bg-white p-4"><p className="text-sm text-stone-500">Vorschläge</p><p className="mt-1 text-3xl font-black">{adminStats.suggestions}</p></div>
+        </div>
+
         <Card className="border-2 border-stone-300 bg-[#fff8e9]">
           <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -1735,6 +1799,9 @@ export default function WeltkochenApp() {
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [openedRecipe, setOpenedRecipe] = useState(null);
   const [page, setPage] = useState("karte");
+  const [favoriteRecipeIds, setFavoriteRecipeIds] = useState([]);
+  const [shoppingList, setShoppingList] = useState([]);
+  const [shoppingListOpen, setShoppingListOpen] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -1750,14 +1817,16 @@ export default function WeltkochenApp() {
         if (session && !cancelled) {
           const profile = await getMyProfile();
           setCurrentUser(profile);
-          const [cloud, content] = await Promise.all([
+          const [cloud, content, favoritesResult] = await Promise.all([
             loadCloudState().catch(() => null),
             loadNormalizedContent(),
+            supabase.from("weltkochen_favorites").select("recipe_id"),
           ]);
           if (!cancelled) {
             if (cloud?.settings) setSettings(cloud.settings);
             setRecipes(content.recipes);
             setSuggestions(content.suggestions);
+            setFavoriteRecipeIds((favoritesResult.data || []).map((item) => item.recipe_id));
           }
         }
       } catch (error) {
@@ -1899,9 +1968,13 @@ export default function WeltkochenApp() {
   if (!currentUser) return <AuthScreen onLogin={async (user) => {
     setCurrentUser(user);
     try {
-      const content = await loadNormalizedContent();
+      const [content, favoritesResult] = await Promise.all([
+        loadNormalizedContent(),
+        supabase.from("weltkochen_favorites").select("recipe_id"),
+      ]);
       setRecipes(content.recipes);
       setSuggestions(content.suggestions);
+      setFavoriteRecipeIds((favoritesResult.data || []).map((item) => item.recipe_id));
     } catch (error) {
       setStorageError(error instanceof Error ? error.message : "Rezepte konnten nicht geladen werden.");
     }
@@ -1926,6 +1999,43 @@ export default function WeltkochenApp() {
 
   function closeRecipe() {
     setOpenedRecipe(null);
+  }
+
+  async function toggleFavorite(recipe) {
+    if (!recipe?.id || !currentUser?.id) return;
+    const isFavorite = favoriteRecipeIds.includes(recipe.id);
+    if (isFavorite) {
+      const { error } = await supabase.from("weltkochen_favorites").delete().eq("user_id", currentUser.id).eq("recipe_id", recipe.id);
+      if (!error) setFavoriteRecipeIds((current) => current.filter((id) => id !== recipe.id));
+    } else {
+      const { error } = await supabase.from("weltkochen_favorites").insert({ user_id: currentUser.id, recipe_id: recipe.id });
+      if (!error) setFavoriteRecipeIds((current) => [...current, recipe.id]);
+    }
+  }
+
+  function addRecipeToShoppingList(recipe, servings) {
+    const baseServings = Number(recipe?.servings) || 4;
+    const scale = Math.max(1, Number(servings) || baseServings) / baseServings;
+    const additions = cleanIngredientRows(recipe?.ingredients).map((item) => ({
+      id: `${recipe.id}-${item.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      recipeId: recipe.id,
+      recipeName: recipe.dish,
+      amount: item.amount === "" ? "" : Number(item.amount) * scale,
+      unit: item.unit || "",
+      name: item.name,
+      checked: false,
+    }));
+    setShoppingList((current) => [...current, ...additions]);
+    setShoppingListOpen(true);
+  }
+
+  function toggleShoppingItem(id) {
+    setShoppingList((current) => current.map((item) => item.id === id ? { ...item, checked: !item.checked } : item));
+  }
+
+  function clearShoppingList() {
+    if (!shoppingList.length) return;
+    if (window.confirm("Einkaufsliste wirklich leeren?")) setShoppingList([]);
   }
 
   async function handleImageUpload(event) {
@@ -2310,6 +2420,7 @@ export default function WeltkochenApp() {
             <button onClick={() => setPage("karte")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "karte" ? "border-stone-900" : "border-transparent"}`}><Globe2 size={20} /> Weltkarte</button>
             <button onClick={() => setPage("details")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "details" ? "border-stone-900" : "border-transparent"}`}><BookOpen size={20} /> Rezept eintragen</button>
             {currentUser.role === "admin" && <button onClick={() => setPage("admin")} className={`flex items-center gap-2 border-b-2 px-3 py-2 font-semibold ${page === "admin" ? "border-stone-900" : "border-transparent"}`}><BarChart3 size={20} /> Admin</button>}
+            <button onClick={() => setShoppingListOpen(true)} className="flex items-center gap-2 border-b-2 border-transparent px-3 py-2 font-semibold"><ShoppingCart size={20} /> Einkauf {shoppingList.length ? `(${shoppingList.length})` : ""}</button>
             <span className="flex items-center gap-2 px-3 py-2 font-semibold text-stone-600"><BarChart3 size={20} /> {progress}%</span>
           </nav>
 
@@ -2495,12 +2606,23 @@ export default function WeltkochenApp() {
                 {activeRecipes.length ? (
                   <div className="mt-3 space-y-3">
                     {activeRecipes.slice(0, 4).map((recipe) => (
-                      <button key={recipe.id} onClick={() => openRecipe(recipe, activeCountry)} className="w-full rounded-2xl border border-stone-200 bg-white p-3 text-left hover:bg-amber-50">
-                        {recipe.image && <img src={recipe.image} alt={recipe.dish} className="mb-3 h-28 w-full rounded-xl object-cover" />}
-                        <p><b>{recipe.dish}</b></p>
-                        <p className="text-xs text-stone-500">{recipe.category || "Hauptgericht"} · erstellt von {recipe.createdByName || recipe.createdBy}{recipe.sourceUrl ? " · mit Original-Link" : ""}</p>
-                        <RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(activeCountry, recipe.id, rating)} small />
-                        <p className="text-xs text-stone-500">Deine Bewertung · Ø {getRecipeAverage(recipe)}</p>
+                      <button key={recipe.id} onClick={() => openRecipe(recipe, activeCountry)} className="flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 text-left transition hover:border-amber-300 hover:bg-amber-50">
+                        {recipe.image ? (
+                          <img src={recipe.image} alt={recipe.dish} className="h-20 w-24 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                          <div className="grid h-20 w-24 shrink-0 place-items-center rounded-xl bg-stone-100"><ChefHat className="h-6 w-6 text-stone-400" /></div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-black">{recipe.dish}</p>
+                            {favoriteRecipeIds.includes(recipe.id) && <Heart className="h-4 w-4 shrink-0 fill-rose-500 text-rose-500" />}
+                          </div>
+                          <p className="mt-1 text-xs text-stone-500">{recipe.category || "Hauptgericht"} · {recipe.createdByName || recipe.createdBy}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(activeCountry, recipe.id, rating)} small />
+                            <span className="text-xs text-stone-500">Ø {getRecipeAverage(recipe)}</span>
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -2756,7 +2878,46 @@ export default function WeltkochenApp() {
         setRating={setRating}
         onClose={closeRecipe}
         onEdit={editRecipeFromModal}
+        isFavorite={Boolean(openedRecipe && favoriteRecipeIds.includes(openedRecipe.id))}
+        onToggleFavorite={toggleFavorite}
+        onAddToShoppingList={addRecipeToShoppingList}
       />
+
+      {shoppingListOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setShoppingListOpen(false)}>
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-wide text-amber-700">Einkaufen</p>
+                <h2 className="text-3xl font-black">Einkaufsliste</h2>
+                <p className="mt-1 text-sm text-stone-500">{shoppingList.length} Position{shoppingList.length === 1 ? "" : "en"}</p>
+              </div>
+              <Button type="button" variant="outline" onClick={() => setShoppingListOpen(false)} className="rounded-xl bg-white">Schließen</Button>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {shoppingList.map((item) => (
+                <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 ${item.checked ? "opacity-50" : ""}`}>
+                  <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} className="h-5 w-5" />
+                  <div className="min-w-0 flex-1">
+                    <div className={item.checked ? "line-through" : ""}>
+                      <b>{item.amount === "" ? "" : formatIngredientAmount(item.amount)} {item.unit}</b> {item.name}
+                    </div>
+                    <div className="text-xs text-stone-500">{item.recipeName}</div>
+                  </div>
+                </label>
+              ))}
+              {!shoppingList.length && <p className="rounded-xl bg-white p-4 text-stone-500">Noch nichts auf der Einkaufsliste.</p>}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <Button type="button" variant="outline" onClick={clearShoppingList} disabled={!shoppingList.length} className="rounded-xl border-red-300 bg-red-50 text-red-700">
+                <Trash2 className="mr-2 h-4 w-4" /> Liste leeren
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
