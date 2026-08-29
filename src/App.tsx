@@ -1438,6 +1438,7 @@ export default function WeltkochenApp() {
   const [hovered, setHovered] = useState("");
   const [query, setQuery] = useState("");
   const [focusCountry, setFocusCountry] = useState("");
+  const [discoverMode, setDiscoverMode] = useState("random");
   const [form, setForm] = useState({ dish: "", category: "Hauptgericht", sourceUrl: "", servings: 4, ingredients: [{ amount: "", unit: "", name: "" }], recipe: "", notes: "", image: "" });
   const [suggestionText, setSuggestionText] = useState("");
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
@@ -1530,6 +1531,50 @@ export default function WeltkochenApp() {
   const activeCountry = selected;
   const activeRecipes = Array.isArray(recipes[activeCountry]) ? recipes[activeCountry] : [];
   const visibleRecipes = useMemo(() => filterRecipesForTable(recipeEntries, query, activeCountry), [recipeEntries, query, activeCountry]);
+
+  const topRecipeEntry = useMemo(() => {
+    if (!recipeEntries.length) return null;
+    return [...recipeEntries]
+      .sort((a, b) => getRecipeAverage(b[1]) - getRecipeAverage(a[1]))[0] || null;
+  }, [recipeEntries]);
+
+  const nextCountrySuggestion = useMemo(() => {
+    const candidates = countries
+      .map((country) => {
+        const list = Array.isArray(recipes[country]) ? recipes[country] : [];
+        return {
+          country,
+          count: getQualifiedRecipesCount(list, settings.minAverageRatingForCompletion),
+          total: list.length,
+        };
+      })
+      .filter((item) => item.count < settings.requiredRecipesPerCountry)
+      .sort((a, b) => b.count - a.count || b.total - a.total || a.country.localeCompare(b.country, "de"));
+    return candidates[0] || null;
+  }, [recipes, settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion]);
+
+  function showRandomRecipe() {
+    if (!recipeEntries.length) return;
+    const [country, recipe] = recipeEntries[Math.floor(Math.random() * recipeEntries.length)];
+    setSelected(country);
+    setFocusCountry("");
+    window.setTimeout(() => setFocusCountry(country), 0);
+    openRecipe(recipe, country);
+  }
+
+  function showTopRecipe() {
+    if (!topRecipeEntry) return;
+    const [country, recipe] = topRecipeEntry;
+    setSelected(country);
+    setFocusCountry("");
+    window.setTimeout(() => setFocusCountry(country), 0);
+    openRecipe(recipe, country);
+  }
+
+  function showNextCountry() {
+    if (!nextCountrySuggestion) return;
+    chooseCountryFromSearch(nextCountrySuggestion.country);
+  }
 
   if (!cloudLoaded) {
     return <div className="grid min-h-screen place-items-center bg-[#f7edda] p-6 text-center text-stone-800"><div><ChefHat className="mx-auto mb-4 h-12 w-12" /><h1 className="text-3xl font-black">Lade Online-Daten...</h1></div></div>;
@@ -2005,22 +2050,87 @@ export default function WeltkochenApp() {
               </select>
             </div>
 
-            <Card className="overflow-hidden rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
-              <CardContent className="p-0">
-                <div className="grid grid-cols-[1fr_1.3fr_1fr_36px] border-b-2 border-stone-300 bg-[#fbf0dd] px-4 py-4 font-black"><span>{query.trim() ? "Land" : activeCountry}</span><span>Rezept</span><span>Bewertung</span><span /></div>
-                <div className="max-h-[560px] overflow-auto">
-                  {visibleRecipes.map(([country, recipe]) => (
-                    <button key={recipe.id} onMouseEnter={() => setHovered(country)} onMouseLeave={() => setHovered("")} onClick={() => { setSelected(country); openRecipe(recipe, country); }} className={`grid w-full grid-cols-[1fr_1.3fr_1fr_36px] items-center border-b border-stone-200 px-4 py-4 text-left transition hover:bg-amber-100 ${selected === country ? "bg-amber-100" : ""}`}>
-                      <span className="font-semibold">{country}</span>
-                      <span>{recipe.image && <img src={recipe.image} alt={recipe.dish} className="mb-2 h-16 w-24 rounded-lg object-cover" />}<b>{recipe.dish}</b><br /><small className="text-stone-500">{recipe.category || "Hauptgericht"} · von {recipe.createdByName || recipe.createdBy}</small></span>
-                      <span onClick={(event) => event.stopPropagation()}><RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(country, recipe.id, rating)} small /><small className="text-stone-500">Ø {getRecipeAverage(recipe)}</small></span>
-                      <ChevronRight />
+            {query.trim() ? (
+              <Card className="overflow-hidden rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
+                <CardContent className="p-0">
+                  <div className="grid grid-cols-[1fr_1.3fr_1fr_36px] border-b-2 border-stone-300 bg-[#fbf0dd] px-4 py-4 font-black"><span>Land</span><span>Rezept</span><span>Bewertung</span><span /></div>
+                  <div className="max-h-[560px] overflow-auto">
+                    {visibleRecipes.map(([country, recipe]) => (
+                      <button key={recipe.id} onMouseEnter={() => setHovered(country)} onMouseLeave={() => setHovered("")} onClick={() => { setSelected(country); openRecipe(recipe, country); }} className={`grid w-full grid-cols-[1fr_1.3fr_1fr_36px] items-center border-b border-stone-200 px-4 py-4 text-left transition hover:bg-amber-100 ${selected === country ? "bg-amber-100" : ""}`}>
+                        <span className="font-semibold">{country}</span>
+                        <span>{recipe.image && <img src={recipe.image} alt={recipe.dish} className="mb-2 h-16 w-24 rounded-lg object-cover" />}<b>{recipe.dish}</b><br /><small className="text-stone-500">{recipe.category || "Hauptgericht"} · von {recipe.createdByName || recipe.createdBy}</small></span>
+                        <span onClick={(event) => event.stopPropagation()}><RatingStars value={getUserRating(recipe, currentUser.username)} onChange={(rating) => setRating(country, recipe.id, rating)} small /><small className="text-stone-500">Ø {getRecipeAverage(recipe)}</small></span>
+                        <ChevronRight />
+                      </button>
+                    ))}
+                    {!visibleRecipes.length && <p className="p-6 text-stone-500">Keine passenden Rezepte gefunden.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
+                <CardContent className="p-5">
+                  <p className="text-sm uppercase tracking-wide text-stone-500">Entdecken</p>
+                  <h3 className="mt-1 text-xl font-black">Was möchtest du sehen?</h3>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setDiscoverMode("random")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "random" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
+                      🎲 Zufall
                     </button>
-                  ))}
-                  {!visibleRecipes.length && <p className="p-6 text-stone-500">Für dieses Land ist noch kein Rezept eingetragen.</p>}
-                </div>
-              </CardContent>
-            </Card>
+                    <button type="button" onClick={() => setDiscoverMode("next")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "next" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
+                      🌍 Nächstes Land
+                    </button>
+                    <button type="button" onClick={() => setDiscoverMode("top")} className={`rounded-2xl border-2 px-3 py-3 text-sm font-black transition ${discoverMode === "top" ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-amber-50"}`}>
+                      ⭐ Top-Rezept
+                    </button>
+                  </div>
+
+                  {discoverMode === "random" && (
+                    <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+                      <h4 className="font-black">Überrasch mich</h4>
+                      <p className="mt-1 text-sm text-stone-500">Öffnet zufällig eines eurer vorhandenen Rezepte.</p>
+                      <Button type="button" onClick={showRandomRecipe} disabled={!recipeEntries.length} className="mt-3 w-full rounded-xl bg-stone-900 text-white">
+                        🎲 Zufälliges Rezept anzeigen
+                      </Button>
+                    </div>
+                  )}
+
+                  {discoverMode === "next" && (
+                    <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+                      {nextCountrySuggestion ? (
+                        <>
+                          <p className="text-sm text-stone-500">Hier fehlt noch etwas</p>
+                          <h4 className="mt-1 text-xl font-black">{nextCountrySuggestion.country}</h4>
+                          <p className="mt-1 text-sm text-stone-500">{nextCountrySuggestion.count} / {settings.requiredRecipesPerCountry} qualifizierte Rezepte</p>
+                          <Button type="button" onClick={showNextCountry} className="mt-3 w-full rounded-xl bg-stone-900 text-white">
+                            🌍 Land auf der Karte anzeigen
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="font-bold">Alle Länder erfüllen bereits das aktuelle Ziel. 🎉</p>
+                      )}
+                    </div>
+                  )}
+
+                  {discoverMode === "top" && (
+                    <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
+                      {topRecipeEntry ? (
+                        <>
+                          <p className="text-sm text-stone-500">{topRecipeEntry[0]}</p>
+                          <h4 className="mt-1 text-xl font-black">{topRecipeEntry[1].dish}</h4>
+                          <div className="mt-2 flex items-center gap-2"><RatingStars value={Math.round(getRecipeAverage(topRecipeEntry[1]))} small /><span className="text-sm font-bold">Ø {getRecipeAverage(topRecipeEntry[1])}</span></div>
+                          <Button type="button" onClick={showTopRecipe} className="mt-3 w-full rounded-xl bg-stone-900 text-white">
+                            ⭐ Top-Rezept öffnen
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-stone-500">Noch kein Rezept vorhanden.</p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="rounded-[2rem] border-2 border-stone-300 bg-[#fff8e9] shadow-sm">
               <CardContent className="p-5">
