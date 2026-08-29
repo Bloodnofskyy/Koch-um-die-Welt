@@ -1573,7 +1573,11 @@ export default function WeltkochenApp() {
 
   function showNextCountry() {
     if (!nextCountrySuggestion) return;
-    chooseCountryFromSearch(nextCountrySuggestion.country);
+    const country = nextCountrySuggestion.country;
+    setSelected(country);
+    setFocusCountry("");
+    setQuery("");
+    window.setTimeout(() => setFocusCountry(country), 0);
   }
 
   if (!cloudLoaded) {
