@@ -823,11 +823,16 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
         <ZoomableGroup
           zoom={position.zoom}
           center={position.coordinates}
-          translateExtent={[
-            [0, 0],
-            [800, 600],
-          ]}
-          onMoveEnd={(pos) => setPosition(pos)}
+          onMoveEnd={(pos) => {
+            const [lon, lat] = pos.coordinates || position.coordinates;
+            setPosition({
+              ...pos,
+              coordinates: [
+                Math.max(-145, Math.min(145, lon)),
+                Math.max(-60, Math.min(75, lat)),
+              ],
+            });
+          }}
         >
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
