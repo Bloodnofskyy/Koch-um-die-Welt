@@ -2266,6 +2266,7 @@ export default function WeltkochenApp() {
   const [importError, setImportError] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [mobileNavTop, setMobileNavTop] = useState(0);
 
   const tutorialSteps = [
     { icon: "🌍", eyebrow: "Willkommen", title: "Deine kulinarische Weltreise beginnt.", text: "Hier kocht ihr euch Land für Land durch die Welt. Je mehr gute Rezepte ihr sammelt, desto grüner wird eure Karte." },
@@ -2308,6 +2309,35 @@ export default function WeltkochenApp() {
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [formIsDirty]);
+
+  useEffect(() => {
+    let raf = 0;
+
+    const updateMobileNavPosition = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const viewport = window.visualViewport;
+        const top = viewport
+          ? viewport.pageTop + viewport.height - 78
+          : window.scrollY + window.innerHeight - 78;
+        setMobileNavTop(Math.max(0, top));
+      });
+    };
+
+    updateMobileNavPosition();
+    window.addEventListener("scroll", updateMobileNavPosition, { passive: true });
+    window.addEventListener("resize", updateMobileNavPosition);
+    window.visualViewport?.addEventListener("scroll", updateMobileNavPosition);
+    window.visualViewport?.addEventListener("resize", updateMobileNavPosition);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", updateMobileNavPosition);
+      window.removeEventListener("resize", updateMobileNavPosition);
+      window.visualViewport?.removeEventListener("scroll", updateMobileNavPosition);
+      window.visualViewport?.removeEventListener("resize", updateMobileNavPosition);
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -4152,7 +4182,14 @@ export default function WeltkochenApp() {
         </div>
       )}
 
-      <button type="button" onClick={restartTutorial} className="fixed bottom-[5.7rem] right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white text-stone-800 shadow-lg md:hidden" title="Tutorial erneut starten" aria-label="Tutorial erneut starten">
+      <button
+        type="button"
+        onClick={restartTutorial}
+        className="absolute right-3 z-[109] grid h-11 w-11 place-items-center rounded-2xl border border-stone-200 bg-white text-stone-800 shadow-lg md:hidden"
+        style={{ top: Math.max(0, mobileNavTop - 54) }}
+        title="Tutorial erneut starten"
+        aria-label="Tutorial erneut starten"
+      >
         <Sparkles className="h-5 w-5" />
       </button>
 
@@ -4160,7 +4197,8 @@ export default function WeltkochenApp() {
         <button
           type="button"
           onClick={() => navigateTo("admin")}
-          className="fixed bottom-[5.7rem] right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 text-xs font-black text-stone-800 shadow-lg md:hidden"
+          className="absolute right-[4.1rem] z-[109] flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-3 text-xs font-black text-stone-800 shadow-lg md:hidden"
+          style={{ top: Math.max(0, mobileNavTop - 54) }}
           title="Admin öffnen"
         >
           <BarChart3 className="h-4 w-4" /> Admin
@@ -4168,12 +4206,11 @@ export default function WeltkochenApp() {
       )}
 
       <nav
-        className="fixed left-0 right-0 z-[110] border-t border-stone-200 bg-[#fffaf0] px-2 pt-2 md:hidden"
+        className="absolute left-0 right-0 z-[110] border-t border-stone-200 bg-[#fffaf0] px-2 pt-2 md:hidden"
         style={{
-          bottom: 0,
+          top: mobileNavTop,
+          minHeight: 78,
           paddingBottom: "max(.55rem, env(safe-area-inset-bottom))",
-          WebkitBackdropFilter: "none",
-          backdropFilter: "none",
         }}
       >
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
