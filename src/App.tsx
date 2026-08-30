@@ -957,6 +957,7 @@ function AuthScreen({ onLogin, storageError }) {
 
 function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggestions, selectedRegion, requiredRecipes, minAverageRating, focusCountry }) {
   const [position, setPosition] = useState({ coordinates: [10, 20], zoom: 1 });
+  const countryCentroidsRef = useRef({});
 
   const regionZooms = {
     "Alle Kontinente": { center: [10, 20], zoom: 0.9 },
@@ -976,8 +977,25 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
 
   useEffect(() => {
     if (!focusCountry) return;
+
     const config = countryZooms[focusCountry];
-    if (config) setPosition({ coordinates: config.center, zoom: config.zoom });
+    if (config) {
+      setPosition({ coordinates: config.center, zoom: config.zoom });
+      return;
+    }
+
+    // Für Länder ohne fest hinterlegten Zoom (auf dem Handy besonders wichtig):
+    // den beim Karten-Render ermittelten Mittelpunkt verwenden.
+    const centroid = countryCentroidsRef.current[focusCountry];
+    if (centroid) {
+      setPosition({ coordinates: centroid, zoom: 3.6 });
+      return;
+    }
+
+    // Fallback: wenigstens auf die passende Region springen.
+    const region = regionRows.find((item) => item.countries.includes(focusCountry));
+    const fallback = regionZooms[region?.name] || regionZooms["Alle Kontinente"];
+    setPosition({ coordinates: fallback.center, zoom: Math.max(fallback.zoom, 2.4) });
   }, [focusCountry]);
 
   function changeZoom(delta) {
@@ -1087,6 +1105,7 @@ function WorldMap({ selected, hovered, setSelected, setHovered, recipes, suggest
             {({ geographies }) =>
               geographies.map((geo) => {
                 const countryName = toGermanCountryName(geo.properties.name);
+                countryCentroidsRef.current[countryName] = geoCentroid(geo);
                 const isHovered = hovered === countryName;
                 const isSelected = selected === countryName;
                 const completed = isCountryCompleted(
@@ -3604,7 +3623,11 @@ export default function WeltkochenApp() {
                           <p className="text-sm text-stone-500">Hier fehlt noch etwas</p>
                           <h4 className="mt-1 text-xl font-black">{nextCountrySuggestion.country}</h4>
                           <p className="mt-1 text-sm text-stone-500">{nextCountrySuggestion.count} / {settings.requiredRecipesPerCountry} qualifizierte Rezepte</p>
-                          <Button type="button" onClick={showNextCountry} className="mt-3 w-full rounded-xl bg-stone-900 text-white">
+                          <Button
+                            type="button"
+                            onClick={showNextCountry}
+                            className="mt-3 min-h-12 w-full touch-manipulation rounded-xl bg-stone-900 text-white"
+                          >
                             🌍 Land auf der Karte anzeigen
                           </Button>
                         </>
