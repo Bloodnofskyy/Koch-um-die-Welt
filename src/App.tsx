@@ -2268,6 +2268,7 @@ export default function WeltkochenApp() {
   const [planSearch, setPlanSearch] = useState("");
   const [planSearchOpen, setPlanSearchOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const todayCardRef = useRef(null);
   const [selectedRegion, setSelectedRegion] = useState("Alle Kontinente");
   const [collapsedRegions, setCollapsedRegions] = useState({});
   const [imageError, setImageError] = useState("");
@@ -2552,6 +2553,16 @@ export default function WeltkochenApp() {
       };
     });
   }, [weekOffset]);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (page !== "kochplan" || weekOffset !== 0) return;
+    const timer = window.setTimeout(() => {
+      todayCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [page, weekOffset]);
 
   const weeklyPlanEntries = useMemo(() => {
     const start = currentWeekDays[0]?.iso;
@@ -2916,13 +2927,33 @@ export default function WeltkochenApp() {
       return;
     }
 
-    const { error } = await supabase
+    // Kein ON CONFLICT nötig: Die Tabelle hat aktuell keinen passenden Unique-Constraint.
+    // Deshalb vorhandene Wochen-Einträge abfragen und nur wirklich neue Zeilen einfügen.
+    const sourceKeys = additions.map((item) => item.source_key).filter(Boolean);
+    const { data: existingRows, error: existingError } = await supabase
       .from("weltkochen_shopping_items")
-      .upsert(additions, { onConflict: "user_id,source_key", ignoreDuplicates: true });
-    if (error) {
-      setStorageError(error.message);
+      .select("source_key")
+      .eq("user_id", currentUser.id)
+      .in("source_key", sourceKeys);
+
+    if (existingError) {
+      setStorageError("Die vorhandenen Einkaufslisten-Einträge konnten nicht geprüft werden.");
       return;
     }
+
+    const existingKeys = new Set((existingRows || []).map((row) => row.source_key));
+    const newAdditions = additions.filter((item) => !existingKeys.has(item.source_key));
+
+    if (newAdditions.length) {
+      const { error } = await supabase
+        .from("weltkochen_shopping_items")
+        .insert(newAdditions);
+      if (error) {
+        setStorageError(error.message);
+        return;
+      }
+    }
+
     await loadShoppingList();
     setShoppingListOpen(true);
   }
@@ -3855,13 +3886,21 @@ export default function WeltkochenApp() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-7">
+              <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-7 md:overflow-visible md:pb-0">
                 {currentWeekDays.map((day) => {
                   const entries = mealPlan.filter((entry) => entry.plan_date === day.iso);
+                  const isToday = day.iso === todayIso;
                   return (
-                    <div key={day.iso} className="min-h-40 rounded-2xl border border-stone-200 bg-white p-3">
+                    <div
+                      key={day.iso}
+                      ref={isToday ? todayCardRef : null}
+                      className={`min-h-40 w-[72vw] max-w-[250px] shrink-0 snap-center rounded-2xl border p-3 md:w-auto md:max-w-none ${isToday ? "border-amber-400 bg-amber-50 shadow-sm ring-2 ring-amber-200" : "border-stone-200 bg-white"}`}
+                    >
                       <div className="mb-3 border-b border-stone-100 pb-2">
-                        <p className="font-black uppercase">{day.label}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-black uppercase">{day.label}</p>
+                          {isToday && <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-stone-950">Heute</span>}
+                        </div>
                         <p className="text-xs text-stone-500">{day.dayLabel}</p>
                       </div>
                       <div className="space-y-2">
