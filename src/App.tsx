@@ -1211,13 +1211,23 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, is
   const structuredIngredients = cleanIngredientRows(openedRecipe.ingredients);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[1.75rem] border border-stone-200 bg-[#fffaf0]/95 shadow-[0_12px_30px_rgba(76,54,28,.08)] p-6 shadow-2xl">
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4 lg:p-6"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="max-h-[94vh] w-full max-w-3xl overflow-auto rounded-[1.75rem] border border-stone-200 bg-[#fffaf0] p-4 shadow-2xl sm:p-5 lg:max-w-6xl lg:p-6"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Rezept ${openedRecipe.dish}`}
+      >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-wide text-amber-700">{openedRecipe.country}</p>
             <h2 className="text-3xl font-black tracking-tight md:text-4xl">{openedRecipe.dish}</h2>
-            {openedRecipe.image && <img src={openedRecipe.image} alt={openedRecipe.dish} className="mt-4 max-h-72 w-full rounded-2xl object-cover" />}
+            {openedRecipe.image && <img src={openedRecipe.image} alt={openedRecipe.dish} className="mt-4 max-h-64 w-full rounded-2xl object-cover lg:max-h-72" />}
             <p className="mt-1 text-stone-500">{openedRecipe.category || "Hauptgericht"} · erstellt von {openedRecipe.createdByName || openedRecipe.createdBy}</p>
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
@@ -1239,7 +1249,7 @@ function RecipeModal({ openedRecipe, currentUser, setRating, onClose, onEdit, is
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[1fr_.7fr]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)] lg:gap-6">
           <div className="space-y-5">
             {structuredIngredients.length > 0 && (
               <div className="rounded-2xl border border-stone-200 bg-white p-5">
