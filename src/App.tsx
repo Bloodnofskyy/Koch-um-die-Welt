@@ -2248,6 +2248,7 @@ export default function WeltkochenApp() {
   const [query, setQuery] = useState("");
   const [focusCountry, setFocusCountry] = useState("");
   const [discoverMode, setDiscoverMode] = useState("random");
+  const [nextCountryIndex, setNextCountryIndex] = useState(0);
   const [form, setForm] = useState(EMPTY_RECIPE_FORM);
   const [savedFormSignature, setSavedFormSignature] = useState(() => recipeFormSignature(EMPTY_RECIPE_FORM));
   const [suggestionText, setSuggestionText] = useState("");
@@ -2610,8 +2611,8 @@ export default function WeltkochenApp() {
     return [winner.country, winner.recipe, winner.average, winner.ratingCount];
   }, [recipeEntries]);
 
-  const nextCountrySuggestion = useMemo(() => {
-    const candidates = countries
+  const nextCountryCandidates = useMemo(() => {
+    return countries
       .map((country) => {
         const list = Array.isArray(recipes[country]) ? recipes[country] : [];
         return {
@@ -2622,8 +2623,15 @@ export default function WeltkochenApp() {
       })
       .filter((item) => item.count < settings.requiredRecipesPerCountry)
       .sort((a, b) => b.count - a.count || b.total - a.total || a.country.localeCompare(b.country, "de"));
-    return candidates[0] || null;
   }, [recipes, settings.requiredRecipesPerCountry, settings.minAverageRatingForCompletion]);
+
+  const nextCountrySuggestion = nextCountryCandidates.length
+    ? nextCountryCandidates[nextCountryIndex % nextCountryCandidates.length]
+    : null;
+
+  function chooseNextTravelSuggestion() {
+    setDiscoverMode("next");
+  }
 
   function showRandomRecipe() {
     if (!recipeEntries.length) return;
@@ -2644,12 +2652,15 @@ export default function WeltkochenApp() {
   }
 
   function showNextCountry() {
-    if (!nextCountrySuggestion) return;
+    if (!nextCountrySuggestion || !nextCountryCandidates.length) return;
     const country = nextCountrySuggestion.country;
     setSelected(country);
     setFocusCountry("");
     setQuery("");
     window.setTimeout(() => setFocusCountry(country), 0);
+
+    // Der Karten-Button blättert nach jedem Anzeigen direkt zum nächsten Reiseziel weiter.
+    setNextCountryIndex((current) => (current + 1) % nextCountryCandidates.length);
   }
 
   if (!cloudLoaded) {
@@ -3564,7 +3575,7 @@ export default function WeltkochenApp() {
                       <span className="block text-sm font-black">Zufall</span>
                       <span className={`mt-0.5 block text-[11px] ${discoverMode === "random" ? "text-stone-300" : "text-stone-400"}`}>Überrasch mich</span>
                     </button>
-                    <button type="button" onClick={() => setDiscoverMode("next")} className={`group rounded-2xl border p-3 text-left transition ${discoverMode === "next" ? "border-stone-900 bg-stone-900 text-white shadow-md" : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"}`}>
+                    <button type="button" onClick={chooseNextTravelSuggestion} className={`group rounded-2xl border p-3 text-left transition ${discoverMode === "next" ? "border-stone-900 bg-stone-900 text-white shadow-md" : "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"}`}>
                       <span className={`mb-2 grid h-9 w-9 place-items-center rounded-xl text-lg ${discoverMode === "next" ? "bg-white/10" : "bg-emerald-100"}`}>🧭</span>
                       <span className="block text-sm font-black">Weiterreisen</span>
                       <span className={`mt-0.5 block text-[11px] ${discoverMode === "next" ? "text-stone-300" : "text-stone-400"}`}>Nächstes Land</span>
